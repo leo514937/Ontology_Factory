@@ -20,7 +20,7 @@ source .venv/bin/activate
 如果直接在命令行使用 Python 模块形式的 CLI，建议带上 `PYTHONPATH`：
 
 ```bash
-export PYTHONPATH="WIKI_MG/src:storage/src:wiki_agent/src:ontology_core/src:evolution/src:relation/src:ner/src:dls/src:preprocess:pipeline/src"
+export PYTHONPATH=".:WIKI_MG/src:storage/src:wiki_agent/src:ontology_core/src:evolution/src:relation/src:ner/src:dls/src:preprocess:pipeline/src"
 ```
 
 ## 1. 文件系统只读命令
@@ -245,7 +245,46 @@ python -m ontology_negotiator.cli classify --graph /path/to/graph.json --node-id
 - 图模式：`{"mode":"graph","results":[...]}`
 - 单节点模式：`{"mode":"node","result":{...}}`
 
-## 8. agent 当前可调用的 CLI 面
+## 8. xiaogugit CLI
+
+入口：
+
+```bash
+python -m xiaogugit
+```
+
+代码位置：
+
+- [`/Users/qiuboyu/Documents/Ontology_Factory/xiaogugit/cli.py`](/Users/qiuboyu/Documents/Ontology_Factory/xiaogugit/cli.py)
+
+常用命令：
+
+```bash
+python -m xiaogugit --root-dir /Users/qiuboyu/Documents/Ontology_Factory/xiaogugit/storage project list
+python -m xiaogugit --root-dir /Users/qiuboyu/Documents/Ontology_Factory/xiaogugit/storage write --project-id demo --filename ontology.json --message "AI: update ontology" --agent-name agent-1 --committer-name Teacher --basevision 0 --data-file /path/to/payload.json
+python -m xiaogugit --root-dir /Users/qiuboyu/Documents/Ontology_Factory/xiaogugit/storage read --project-id demo --filename ontology.json
+python -m xiaogugit --root-dir /Users/qiuboyu/Documents/Ontology_Factory/xiaogugit/storage version tree --project-id demo --filename ontology.json
+```
+
+支持的命令组：
+
+- `project`
+- `file`
+- `write`
+- `read`
+- `log`
+- `commit`
+- `version`
+- `timeline`
+- `diff`
+- `rollback`
+- `delete`
+
+输出：
+
+- 统一 JSON
+
+## 9. agent 当前可调用的 CLI 面
 
 `wiki_agent` 当前允许通过唯一工具 `run_command` 调用：
 
@@ -256,13 +295,14 @@ python -m ontology_negotiator.cli classify --graph /path/to/graph.json --node-id
 - `python -m ontology_store.cli`
 - `python -m ontology_core.cli`
 - `python -m ontology_negotiator.cli`
+- `python -m xiaogugit`
 
 相关实现：
 
 - [`/Users/qiuboyu/Documents/Ontology_Factory/wiki_agent/src/wiki_agent/tools.py`](/Users/qiuboyu/Documents/Ontology_Factory/wiki_agent/src/wiki_agent/tools.py)
 - [`/Users/qiuboyu/Documents/Ontology_Factory/wiki_agent/src/wiki_agent/prompts.py`](/Users/qiuboyu/Documents/Ontology_Factory/wiki_agent/src/wiki_agent/prompts.py)
 
-## 9. 当前推荐组合
+## 10. 当前推荐组合
 
 如果是人工调试，推荐顺序：
 
@@ -273,8 +313,9 @@ python -m ontology_negotiator.cli classify --graph /path/to/graph.json --node-id
 5. `python -m ontology_core.cli search` 看 canonical 结果
 6. `wikimg search/show` 看现有 wiki 页面
 7. `python -m ontology_negotiator.cli classify` 做达类私分类
+8. `python -m xiaogugit ...` 管理结构化 JSON 的项目、版本、Diff 与回滚
 
-## 10. 测试状态
+## 11. 测试状态
 
 CLI 相关回归已覆盖，最近一次全量测试结果：
 
@@ -285,3 +326,31 @@ CLI 相关回归已覆盖，最近一次全量测试结果：
 - [`/Users/qiuboyu/Documents/Ontology_Factory/storage/tests/test_cli_tools.py`](/Users/qiuboyu/Documents/Ontology_Factory/storage/tests/test_cli_tools.py)
 - [`/Users/qiuboyu/Documents/Ontology_Factory/wiki_agent/tests/test_wiki_agent_runtime.py`](/Users/qiuboyu/Documents/Ontology_Factory/wiki_agent/tests/test_wiki_agent_runtime.py)
 - [`/Users/qiuboyu/Documents/Ontology_Factory/pipeline/tests/test_pipeline_wiki_runner.py`](/Users/qiuboyu/Documents/Ontology_Factory/pipeline/tests/test_pipeline_wiki_runner.py)
+
+## 12. AFT Review And QA CLI
+
+New AFT module CLIs are also callable from the main `wiki_agent` flow through `run_command`.
+
+Module entrypoints:
+
+```bash
+python -m ontology_audit_hub.review_cli github --request-file /absolute/path/review.json
+python -m ontology_audit_hub.review_cli doctor
+python -m ontology_audit_hub.qa_cli answer --question "Explain Payment" --session-id qa-1
+python -m ontology_audit_hub.qa_cli answer --request-file /absolute/path/qa.json
+python -m ontology_audit_hub.qa_cli upload --file /absolute/path/knowledge.md --collection docs
+python -m ontology_audit_hub.qa_cli rebuild-lexical-index --collection docs
+python -m ontology_audit_hub.qa_cli doctor
+```
+
+Key files:
+
+- [`C:/Users/aidis/Desktop/本体工厂/Ontology_Factory/aft/aft-main/src/ontology_audit_hub/review_cli.py`](/C:/Users/aidis/Desktop/本体工厂/Ontology_Factory/aft/aft-main/src/ontology_audit_hub/review_cli.py)
+- [`C:/Users/aidis/Desktop/本体工厂/Ontology_Factory/aft/aft-main/src/ontology_audit_hub/qa_cli.py`](/C:/Users/aidis/Desktop/本体工厂/Ontology_Factory/aft/aft-main/src/ontology_audit_hub/qa_cli.py)
+- [`C:/Users/aidis/Desktop/本体工厂/Ontology_Factory/wiki_agent/src/wiki_agent/tools.py`](/C:/Users/aidis/Desktop/本体工厂/Ontology_Factory/wiki_agent/src/wiki_agent/tools.py)
+- [`C:/Users/aidis/Desktop/本体工厂/Ontology_Factory/wiki_agent/src/wiki_agent/prompts.py`](/C:/Users/aidis/Desktop/本体工厂/Ontology_Factory/wiki_agent/src/wiki_agent/prompts.py)
+
+Main-flow allowlist now includes:
+
+- `python -m ontology_audit_hub.review_cli`
+- `python -m ontology_audit_hub.qa_cli`

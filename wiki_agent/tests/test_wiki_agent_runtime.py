@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -66,6 +68,63 @@ def test_toolbox_run_command_is_readonly_and_scoped(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError):
         toolbox.tool_run_command("cat ../outside.txt")
+
+
+def test_toolbox_run_command_allows_xiaogugit_module_with_workspace_paths(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target_dir = tmp_path / "docs"
+    target_dir.mkdir()
+    payload_path = tmp_path / "payload.json"
+    payload_path.write_text('{"hello":"world"}', encoding="utf-8")
+    store = OntologyStore(str(tmp_path / "wiki.sqlite3"))
+    toolbox = WikiAgentToolbox(
+        store=store,
+        document_id="doc_demo",
+        doc_name="测试文档",
+        clean_text="智能养鱼系统连接 OneNet",
+        run_id="run_demo",
+        workspace_root=tmp_path,
+        target_folder=target_dir,
+    )
+
+    def fake_run(argv, **kwargs):
+        assert argv[:3] == ["python", "-m", "xiaogugit"]
+        assert kwargs["env"]["PYTHONPATH"].split(os.pathsep)[0] == str(tmp_path.resolve())
+        return subprocess.CompletedProcess(argv, 0, stdout='{"projects":[]}\n', stderr="")
+
+    monkeypatch.setattr("wiki_agent.tools.subprocess.run", fake_run)
+
+    result = toolbox.tool_run_command(
+        f"python -m xiaogugit --root-dir {str((tmp_path / 'storage').resolve())} "
+        f"write --project-id demo --filename ontology.json --message test "
+        f"--agent-name agent-1 --committer-name teacher --basevision 0 --data-file {str(payload_path.resolve())}"
+    )
+
+    assert result["returncode"] == 0
+    assert result["stdout"] == '{"projects":[]}'
+
+
+def test_toolbox_run_command_rejects_xiaogugit_path_outside_workspace(tmp_path: Path) -> None:
+    target_dir = tmp_path / "docs"
+    target_dir.mkdir()
+    outside_root = tmp_path.parent / "outside-storage"
+    store = OntologyStore(str(tmp_path / "wiki.sqlite3"))
+    toolbox = WikiAgentToolbox(
+        store=store,
+        document_id="doc_demo",
+        doc_name="测试文档",
+        clean_text="智能养鱼系统连接 OneNet",
+        run_id="run_demo",
+        workspace_root=tmp_path,
+        target_folder=target_dir,
+    )
+
+    with pytest.raises(ValueError):
+        toolbox.tool_run_command(
+            f"python -m xiaogugit --root-dir {str(outside_root.resolve())} project list"
+        )
 
 
 class FakeTraceClient:

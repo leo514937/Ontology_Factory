@@ -26,3 +26,5 @@ packages = ["src/ontology_negotiator"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+cache_dir = "../.test-artifacts/dls/.pytest_cache"
+addopts = "--basetemp=../.test-artifacts/dls/tmp"

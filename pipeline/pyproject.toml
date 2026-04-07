@@ -25,3 +25,5 @@ packages = ["src/pipeline"]
 [tool.pytest.ini_options]
 pythonpath = ["src", "../ner/src", "../relation/src", "../storage/src", "../ontology_core/src", "../evolution/src", "../dls/src", "../preprocess"]
 testpaths = ["tests"]
+cache_dir = "../.test-artifacts/pipeline/.pytest_cache"
+addopts = "--basetemp=../.test-artifacts/pipeline/tmp"

@@ -21,6 +21,9 @@ _PYTHON_MODULES = {
     "ontology_store.cli",
     "ontology_core.cli",
     "ontology_negotiator.cli",
+    "xiaogugit",
+    "ontology_audit_hub.review_cli",
+    "ontology_audit_hub.qa_cli",
 }
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[。！？；\n])")
 
@@ -92,7 +95,7 @@ class WikiAgentToolbox:
         return "domain"
 
     def tool_run_command(self, command: str) -> dict[str, Any]:
-        argv = shlex.split(str(command).strip())
+        argv = shlex.split(str(command).strip(), posix=os.name != "nt")
         if not argv:
             raise ValueError("empty command")
         if any(pattern in str(command) for pattern in _BLOCKED_SHELL_PATTERNS):
@@ -100,7 +103,9 @@ class WikiAgentToolbox:
         self._validate_command(argv)
         env = os.environ.copy()
         env["PYTHONPATH"] = _build_pythonpath(self.workspace_root, env.get("PYTHONPATH", ""))
-        env["PATH"] = f"{self.workspace_root / '.venv' / 'bin'}:{env.get('PATH', '')}"
+        env["PATH"] = os.pathsep.join(
+            [str(self.workspace_root / ".venv" / "bin"), env.get("PATH", "")]
+        )
         completed = subprocess.run(
             argv,
             cwd=str(self.target_folder),
@@ -166,6 +171,12 @@ class WikiAgentToolbox:
         if module not in _PYTHON_MODULES:
             raise ValueError(f"unsupported python module: {module}")
         path_flags = {"--input", "--database", "--graph", "--config", "--artifact-root", "--output"}
+        if module == "xiaogugit":
+            path_flags |= {"--root-dir", "--data-file"}
+        if module == "ontology_audit_hub.review_cli":
+            path_flags |= {"--request-file"}
+        if module == "ontology_audit_hub.qa_cli":
+            path_flags |= {"--request-file", "--file"}
         for flag in path_flags:
             for path_arg in self._extract_flag_values(args[2:], flag):
                 self._ensure_path_inside_workspace(path_arg)
@@ -279,6 +290,7 @@ def _similarity(left: str, right: str) -> float:
 
 def _build_pythonpath(workspace_root: Path, existing: str) -> str:
     paths = [
+        workspace_root,
         workspace_root / "WIKI_MG" / "src",
         workspace_root / "storage" / "src",
         workspace_root / "wiki_agent" / "src",
@@ -289,6 +301,7 @@ def _build_pythonpath(workspace_root: Path, existing: str) -> str:
         workspace_root / "dls" / "src",
         workspace_root / "preprocess",
         workspace_root / "pipeline" / "src",
+        workspace_root / "aft" / "aft-main" / "src",
     ]
     rendered = [str(path) for path in paths]
     if existing:
