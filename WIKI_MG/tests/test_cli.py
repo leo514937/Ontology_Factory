@@ -2,18 +2,22 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-ENV = os.environ | {"PYTHONPATH": str(ROOT / "src")}
+PYTHONPATH = [str(ROOT / "src")]
+if os.environ.get("PYTHONPATH"):
+    PYTHONPATH.append(os.environ["PYTHONPATH"])
+ENV = os.environ | {"PYTHONPATH": os.pathsep.join(PYTHONPATH)}
 
 
 def run_cli(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ["python3", "-m", "wikimg", *args],
+        [sys.executable, "-m", "wikimg", *args],
         cwd=cwd,
         env=ENV,
         text=True,
@@ -23,6 +27,7 @@ def run_cli(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
 
 
 class WikiCliTests(unittest.TestCase):
+    @unittest.skipIf(sys.version_info[:2] < (3, 10), "wikimg requires Python 3.10+")
     def test_full_document_lifecycle(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace = Path(temp_dir)

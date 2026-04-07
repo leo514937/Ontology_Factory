@@ -9,16 +9,30 @@ import uuid
 from pathlib import Path
 
 import pytest
-from typer.testing import CliRunner
 
-from ontology_audit_hub.domain.audit.models import QuestionAnswerResponse
-from ontology_audit_hub.domain.documents.models import DocumentChunk, KnowledgeUploadConfig, KnowledgeUploadResponse
-from ontology_audit_hub.infra.lexical_index import SqliteLexicalIndex
-from ontology_audit_hub.infra.retrieval import QdrantRetriever
-from ontology_audit_hub.infra.settings import AuditHubSettings
-from ontology_audit_hub.qa_cli import app
+pytestmark = pytest.mark.skipif(sys.version_info[:2] < (3, 10), reason="AFT QA CLI tests require Python 3.10+")
 
-runner = CliRunner()
+if sys.version_info[:2] >= (3, 10):
+    from typer.testing import CliRunner
+
+    from ontology_audit_hub.domain.audit.models import QuestionAnswerResponse
+    from ontology_audit_hub.domain.documents.models import DocumentChunk, KnowledgeUploadConfig, KnowledgeUploadResponse
+    from ontology_audit_hub.infra.lexical_index import SqliteLexicalIndex
+    from ontology_audit_hub.infra.retrieval import QdrantRetriever
+    from ontology_audit_hub.infra.settings import AuditHubSettings
+    from ontology_audit_hub.qa_cli import app
+
+    runner = CliRunner()
+else:  # pragma: no cover - test module placeholders for skipped environments
+    QuestionAnswerResponse = None
+    DocumentChunk = None
+    KnowledgeUploadConfig = None
+    KnowledgeUploadResponse = None
+    SqliteLexicalIndex = None
+    QdrantRetriever = None
+    AuditHubSettings = None
+    app = None
+    runner = None
 
 
 @pytest.fixture

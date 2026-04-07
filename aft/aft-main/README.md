@@ -8,7 +8,7 @@
 
 ### 1. 前置条件
 
-- **Python**: 3.11
+- **Python**: 3.10+
 - **Docker Desktop**: 用于运行后端服务（Qdrant / Neo4j）
 - **PowerShell**: 用于执行仓库中的 `.ps1` 脚本
 

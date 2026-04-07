@@ -11,10 +11,12 @@ DEFAULT_STATUS = "开发中"
 
 
 def _manager_class():
-    try:
+    if __package__:
         from .manager import XiaoGuGitManager
-    except ImportError:  # pragma: no cover - fallback for direct script execution
-        from manager import XiaoGuGitManager
+        return XiaoGuGitManager
+
+    from manager import XiaoGuGitManager  # pragma: no cover - fallback for direct script execution
+
     return XiaoGuGitManager
 
 

@@ -7,7 +7,7 @@ name = "ontology-audit-hub"
 version = "0.1.0"
 description = "Ontology-driven QA audit hub built with LangGraph and Pydantic."
 readme = "README.md"
-requires-python = ">=3.11,<3.12"
+requires-python = ">=3.10,<3.12"
 dependencies = [
   "langgraph>=0.2.27,<0.3",
   "langgraph-checkpoint-sqlite>=1.0.4,<2",
@@ -43,14 +43,14 @@ packages = ["src/ontology_audit_hub"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py311"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
 ignore = ["B008", "E501"]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.10"
 warn_unused_configs = true
 warn_redundant_casts = true
 warn_unused_ignores = true

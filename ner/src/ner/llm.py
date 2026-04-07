@@ -6,7 +6,12 @@ from typing import Any
 
 import httpx
 from pydantic import BaseModel, Field
-from dotenv import load_dotenv
+
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:  # pragma: no cover - optional dependency for local env loading
+    def load_dotenv() -> None:
+        return None
 
 from ner.schema import NerEntity
 

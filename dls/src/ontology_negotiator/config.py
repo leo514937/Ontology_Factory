@@ -5,7 +5,10 @@
 from pathlib import Path
 from typing import Any
 
-import tomllib
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - Python < 3.11 fallback
+    import tomli as tomllib
 from pydantic import BaseModel, ConfigDict, Field
 
 

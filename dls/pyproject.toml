@@ -13,6 +13,7 @@ dependencies = [
   "langchain-core>=0.3.40",
   "langchain-openai>=0.2.12",
   "pydantic>=2.10.0",
+  "tomli>=2.0.1; python_version < '3.11'",
 ]
 
 [project.optional-dependencies]

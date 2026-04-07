@@ -9,12 +9,20 @@ import uuid
 from pathlib import Path
 
 import pytest
-from typer.testing import CliRunner
 
-from ontology_audit_hub.domain.review.models import GitHubReviewResponse
-from ontology_audit_hub.review_cli import app
+pytestmark = pytest.mark.skipif(sys.version_info[:2] < (3, 10), reason="AFT review CLI tests require Python 3.10+")
 
-runner = CliRunner()
+if sys.version_info[:2] >= (3, 10):
+    from typer.testing import CliRunner
+
+    from ontology_audit_hub.domain.review.models import GitHubReviewResponse
+    from ontology_audit_hub.review_cli import app
+
+    runner = CliRunner()
+else:  # pragma: no cover - test module placeholders for skipped environments
+    GitHubReviewResponse = None
+    app = None
+    runner = None
 
 
 @pytest.fixture
