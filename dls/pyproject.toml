@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ontology-negotiator"
+version = "0.1.0"
+description = "LangGraph-based ontology node negotiator for Universal/Class/Individual labeling."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "langgraph>=0.2.53",
+  "langchain-core>=0.3.40",
+  "langchain-openai>=0.2.12",
+  "pydantic>=2.10.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ontology_negotiator"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

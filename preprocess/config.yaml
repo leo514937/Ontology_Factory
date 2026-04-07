@@ -1,0 +1,48 @@
+pipeline:
+  # conservative: 宁可漏修（改动越小越好），且尽量不碰数字/单位
+  conservative: true
+  # 仅输出干净文本；此阶段不产出结构化候选
+  output: clean_text
+
+io:
+  input_globs:
+    - "*.txt"
+    - "*.md"
+    - "*.pdf"
+    - "*.docx"
+    - "*.html"
+    - "*.htm"
+  output_dir: "outputs"
+  encoding_fallbacks: ["utf-8", "utf-8-sig", "gb18030"]
+
+models:
+  enabled: true
+  # 三模型并行（可同一家，也可不同家）。你自行填 token / base_url / model。
+  # 这里按“OpenAI 兼容 Chat Completions”协议组织（多数厂商都兼容）。
+  candidates:
+    - name: "model_a"
+      provider: "openai_compat"
+      base_url: "https://coding.dashscope.aliyuncs.com/v1"
+      api_key_env: "sk-sp-8b78e83f38914b7aa664cdf702d33dcb"
+      model: "glm-5"
+      timeout_s: 200
+    - name: "model_b"
+      provider: "openai_compat"
+      base_url: "https://coding.dashscope.aliyuncs.com/v1"
+      api_key_env: "sk-sp-8b78e83f38914b7aa664cdf702d33dcb"
+      model: "qwen3-coder-plus"
+      timeout_s: 200
+    - name: "model_c"
+      provider: "openai_compat"
+      base_url: "https://coding.dashscope.aliyuncs.com/v1"
+      api_key_env: "sk-sp-8b78e83f38914b7aa664cdf702d33dcb"
+      model: "qwen3-coder-next"
+      timeout_s: 200
+
+  # 模型只允许做“低风险清洗”。任何涉及数字/单位/参数的改写都应该被拒绝。
+  # 如果你后面想更严格，可把 max_relative_change 调小。
+  arbitration:
+    max_relative_change: 0.08
+    require_numbers_preserved: true
+    require_two_models_agree: false
+

@@ -1,0 +1,84 @@
+from __future__ import annotations
+
+import os
+import subprocess
+import tempfile
+import unittest
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+ENV = os.environ | {"PYTHONPATH": str(ROOT / "src")}
+
+
+def run_cli(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["python3", "-m", "wikimg", *args],
+        cwd=cwd,
+        env=ENV,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+
+class WikiCliTests(unittest.TestCase):
+    def test_full_document_lifecycle(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = Path(temp_dir)
+
+            result = run_cli("init", cwd=workspace)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue((workspace / ".wikimg" / "config.json").exists())
+            self.assertTrue((workspace / "wiki" / "common").exists())
+            self.assertTrue((workspace / "wiki" / "domain").exists())
+            self.assertTrue((workspace / "wiki" / "private").exists())
+
+            result = run_cli("new", "common", "Getting Started", cwd=workspace)
+            self.assertEqual(result.returncode, 0, result.stdout)
+            document_path = workspace / "wiki" / "common" / "getting-started.md"
+            self.assertTrue(document_path.exists())
+
+            result = run_cli("list", cwd=workspace)
+            self.assertEqual(result.returncode, 0)
+            self.assertIn("common:getting-started", result.stdout)
+
+            result = run_cli("show", "common:getting-started", cwd=workspace)
+            self.assertEqual(result.returncode, 0)
+            self.assertIn("# Getting Started", result.stdout)
+
+            result = run_cli(
+                "rename",
+                "common:getting-started",
+                "Architecture Notes",
+                cwd=workspace,
+            )
+            self.assertEqual(result.returncode, 0)
+            renamed_path = workspace / "wiki" / "common" / "architecture-notes.md"
+            self.assertTrue(renamed_path.exists())
+            self.assertIn("# Architecture Notes", renamed_path.read_text(encoding="utf-8"))
+
+            result = run_cli("move", "common:architecture-notes", "private", cwd=workspace)
+            self.assertEqual(result.returncode, 0)
+            moved_path = workspace / "wiki" / "private" / "architecture-notes.md"
+            self.assertTrue(moved_path.exists())
+
+            moved_path.write_text(
+                "# Architecture Notes\n\nThis is a private note.\n",
+                encoding="utf-8",
+            )
+            result = run_cli("search", "private note", "--content", cwd=workspace)
+            self.assertEqual(result.returncode, 0)
+            self.assertIn("private:architecture-notes", result.stdout)
+
+            result = run_cli("doctor", cwd=workspace)
+            self.assertEqual(result.returncode, 0)
+            self.assertIn("Workspace looks healthy.", result.stdout)
+
+            result = run_cli("delete", "private:architecture-notes", "--yes", cwd=workspace)
+            self.assertEqual(result.returncode, 0)
+            self.assertFalse(moved_path.exists())
+
+
+if __name__ == "__main__":
+    unittest.main()
