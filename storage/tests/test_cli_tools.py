@@ -1,13 +1,25 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
-from ner.schema import NerEntity
-from ontology_core.cli import main as ontology_search_main
-from ontology_negotiator.cli import main as dls_cli_main
-from ontology_store import OntologyStore
-from ontology_store.cli import main as storage_cli_main
+import pytest
+
+pytestmark = pytest.mark.skipif(sys.version_info[:2] < (3, 10), reason="storage CLI tests require Python 3.10+")
+
+if sys.version_info[:2] >= (3, 10):
+    from ner.schema import NerEntity
+    from ontology_core.cli import main as ontology_search_main
+    from ontology_negotiator.cli import main as dls_cli_main
+    from ontology_store import OntologyStore
+    from ontology_store.cli import main as storage_cli_main
+else:  # pragma: no cover - test module placeholders for skipped environments
+    NerEntity = None
+    ontology_search_main = None
+    dls_cli_main = None
+    OntologyStore = None
+    storage_cli_main = None
 
 
 def _seed_store(database_path: Path) -> OntologyStore:
