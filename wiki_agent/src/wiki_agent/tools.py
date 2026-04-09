@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -16,11 +17,14 @@ from wiki_agent.wikimg_backend import WikimgBackend
 _BLOCKED_SHELL_PATTERNS = (";", "&&", "||", "|", ">", ">>", "<")
 _READONLY_COMMANDS = {"pwd", "ls", "find", "rg", "cat", "sed", "head", "tail", "wc", "sort", "stat"}
 _PYTHON_MODULES = {
+    "wikimg",
     "ner.cli",
     "entity_relation.cli",
     "ontology_store.cli",
     "ontology_core.cli",
     "ontology_negotiator.cli",
+    "pipeline.cli",
+    "mm_denoise.cli",
     "xiaogugit",
     "ontology_audit_hub.review_cli",
     "ontology_audit_hub.qa_cli",
@@ -103,18 +107,29 @@ class WikiAgentToolbox:
         self._validate_command(argv)
         env = os.environ.copy()
         env["PYTHONPATH"] = _build_pythonpath(self.workspace_root, env.get("PYTHONPATH", ""))
-        env["PATH"] = os.pathsep.join(
-            [str(self.workspace_root / ".venv" / "bin"), env.get("PATH", "")]
-        )
-        completed = subprocess.run(
-            argv,
-            cwd=str(self.target_folder),
-            capture_output=True,
-            text=True,
-            timeout=15,
-            check=False,
-            env=env,
-        )
+        env["PATH"] = _build_tool_path(self.workspace_root, env.get("PATH", ""))
+        executable_argv = self._normalize_command(argv, env)
+        try:
+            completed = subprocess.run(
+                executable_argv,
+                cwd=str(self.target_folder),
+                capture_output=True,
+                text=True,
+                timeout=15,
+                check=False,
+                env=env,
+            )
+        except FileNotFoundError as error:
+            return _truncate_observation(
+                {
+                    "command": command,
+                    "cwd": str(self.target_folder),
+                    "returncode": 127,
+                    "stdout": "",
+                    "stderr": str(error),
+                },
+                max_chars=6000,
+            )
         return _truncate_observation(
             {
                 "command": command,
@@ -134,7 +149,7 @@ class WikiAgentToolbox:
         if executable == "wikimg":
             self._validate_wikimg(argv[1:])
             return
-        if executable in {"python", "python3", sys.executable, str((self.workspace_root / ".venv" / "bin" / "python").resolve())}:
+        if self._is_python_executable(executable):
             self._validate_python_module(argv[1:])
             return
         raise ValueError(f"unsupported command: {executable}")
@@ -170,7 +185,19 @@ class WikiAgentToolbox:
         module = args[1]
         if module not in _PYTHON_MODULES:
             raise ValueError(f"unsupported python module: {module}")
-        path_flags = {"--input", "--database", "--graph", "--config", "--artifact-root", "--output"}
+        path_flags = {
+            "--input",
+            "--input-dir",
+            "--database",
+            "--graph",
+            "--config",
+            "--artifact-root",
+            "--output",
+            "--root",
+            "--base-dir",
+            "--pipeline-config",
+            "--preprocess-config",
+        }
         if module == "xiaogugit":
             path_flags |= {"--root-dir", "--data-file"}
         if module == "ontology_audit_hub.review_cli":
@@ -180,6 +207,29 @@ class WikiAgentToolbox:
         for flag in path_flags:
             for path_arg in self._extract_flag_values(args[2:], flag):
                 self._ensure_path_inside_workspace(path_arg)
+
+    def _normalize_command(self, argv: list[str], env: dict[str, str]) -> list[str]:
+        if argv[0] == "cat" and shutil.which("cat", path=env.get("PATH", "")) is None:
+            return [
+                sys.executable,
+                "-c",
+                (
+                    "from pathlib import Path; import sys; "
+                    "sys.stdout.write(''.join("
+                    "Path(arg).read_text(encoding='utf-8', errors='replace') for arg in sys.argv[1:]"
+                    "))"
+                ),
+                *argv[1:],
+            ]
+        if argv[0] == "wikimg" and shutil.which("wikimg", path=env.get("PATH", "")) is None:
+            return [sys.executable, "-m", "wikimg", *argv[1:]]
+        return argv
+
+    def _is_python_executable(self, executable: str) -> bool:
+        rendered = str(executable).strip()
+        if rendered in {"python", "python3", sys.executable}:
+            return True
+        return Path(rendered).name.lower() in {"python", "python.exe", "python3", "python3.exe"}
 
     def _extract_flag_values(self, args: list[str], flag: str) -> list[str]:
         values: list[str] = []
@@ -304,6 +354,17 @@ def _build_pythonpath(workspace_root: Path, existing: str) -> str:
         workspace_root / "aft" / "aft-main" / "src",
     ]
     rendered = [str(path) for path in paths]
+    if existing:
+        rendered.append(existing)
+    return os.pathsep.join(rendered)
+
+
+def _build_tool_path(workspace_root: Path, existing: str) -> str:
+    paths = [
+        workspace_root / ".venv" / "Scripts",
+        workspace_root / ".venv" / "bin",
+    ]
+    rendered = [str(path) for path in paths if path.exists()]
     if existing:
         rendered.append(existing)
     return os.pathsep.join(rendered)

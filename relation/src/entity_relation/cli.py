@@ -12,16 +12,22 @@ _SENTENCE_SPLIT_RE = re.compile(r"(?<=[。！？；\n])")
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Relation extraction command line interface.")
+    parser = argparse.ArgumentParser(
+        description="关系提取命令行工具。 "
+        "从原始文本中提取实体间的语义关系，并返回包含主体、客体及关系类型的结构化 JSON 结果。"
+    )
     subparsers = parser.add_subparsers(dest="command")
 
-    extract_parser = subparsers.add_parser("extract", help="Extract relations from text.")
-    extract_parser.add_argument("--input", required=True, help="Input plain text path.")
-    extract_parser.add_argument("--output", default="", help="Optional output JSON path.")
-    extract_parser.add_argument("--stdout", action="store_true", help="Print JSON to stdout.")
-    extract_parser.add_argument("--doc-id", default="", help="Optional document identifier.")
-    extract_parser.add_argument("--query", default="", help="Optional query term to narrow extraction.")
-    extract_parser.add_argument("--max-sentences", type=int, default=8, help="Used with --query to narrow extraction.")
+    extract_parser = subparsers.add_parser(
+        "extract",
+        help="对文件执行关系提取。返回符合 RelationDocument 架构的 JSON 对象。"
+    )
+    extract_parser.add_argument("--input", required=True, help="输入待处理的纯文本文件路径。")
+    extract_parser.add_argument("--output", default="", help="可选：将提取结果保存为 JSON 文件的路径。")
+    extract_parser.add_argument("--stdout", action="store_true", help="显式打印 JSON 结果到标准输出。")
+    extract_parser.add_argument("--doc-id", default="", help="可选：文档标识符；默认使用输入文件名称。")
+    extract_parser.add_argument("--query", default="", help="如果提供，则仅从包含此关键词的句子中提取关系。")
+    extract_parser.add_argument("--max-sentences", type=int, default=8, help="启用 --query 时使用的最大上下文句子数量。")
     args = parser.parse_args()
 
     if args.command not in {"extract", None}:

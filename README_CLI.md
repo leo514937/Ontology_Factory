@@ -23,6 +23,17 @@ source .venv/bin/activate
 export PYTHONPATH=".:WIKI_MG/src:storage/src:wiki_agent/src:ontology_core/src:evolution/src:relation/src:ner/src:dls/src:preprocess:pipeline/src"
 ```
 
+所有 CLI 的顶层入口和实际子命令都支持干净的 `--help` 输出，建议 agent 在首次调用前先读取帮助：
+
+```bash
+wikimg --help
+wikimg search --help
+python -m ner.cli --help
+python -m ner.cli extract --help
+python -m ontology_negotiator.cli classify --help
+python -m mm_denoise.cli --help
+```
+
 ## 1. 文件系统只读命令
 
 这些命令主要给 `wiki_agent` 在目标文档所在目录中做自由探索和检索。
@@ -54,6 +65,12 @@ cat 鱼家第一阶段.txt
 ## 2. Wiki CLI
 
 Wiki 使用 [`WIKI_MG`](/Users/qiuboyu/Documents/Ontology_Factory/WIKI_MG) 提供的 `wikimg`。
+
+可调用形式：
+
+- 直接命令：`wikimg ...`
+- Python 模块：`python -m wikimg ...`
+- 两种形式都支持 `--help`
 
 常用命令：
 
@@ -284,25 +301,82 @@ python -m xiaogugit --root-dir /Users/qiuboyu/Documents/Ontology_Factory/xiaogug
 
 - 统一 JSON
 
-## 9. agent 当前可调用的 CLI 面
+## 9. pipeline CLI
+
+入口：
+
+```bash
+python -m pipeline.cli --help
+python -m pipeline.cli --input /path/to/doc.txt --preprocess-config preprocess.yaml
+```
+
+代码位置：
+
+- [`/Users/qiuboyu/Documents/Ontology_Factory/pipeline/src/pipeline/cli.py`](/Users/qiuboyu/Documents/Ontology_Factory/pipeline/src/pipeline/cli.py)
+
+支持参数：
+
+- `--input`
+- `--input-dir`
+- `--mode`
+- `--glob`
+- `--preprocess-config`
+- `--pipeline-config`
+- `--force-reingest`
+
+输出：
+
+- 统一 JSON 状态
+- 支持单文档与批处理
+
+## 10. mm_denoise CLI
+
+入口：
+
+```bash
+python -m mm_denoise.cli --help
+python -m mm_denoise.cli --config preprocess/mm_denoise/config.yaml --input /path/to/doc.txt
+```
+
+代码位置：
+
+- [`/Users/qiuboyu/Documents/Ontology_Factory/preprocess/mm_denoise/cli.py`](/Users/qiuboyu/Documents/Ontology_Factory/preprocess/mm_denoise/cli.py)
+
+支持参数：
+
+- `--config`
+- `--input`
+- `--base-dir`
+
+输出：
+
+- 清洗后的文本文件
+- 对应的 JSON 执行报告
+
+## 11. agent 当前可调用的 CLI 面
 
 `wiki_agent` 当前允许通过唯一工具 `run_command` 调用：
 
 - 文件系统只读命令
 - `wikimg`
+- `python -m wikimg`
 - `python -m ner.cli`
 - `python -m entity_relation.cli`
 - `python -m ontology_store.cli`
 - `python -m ontology_core.cli`
 - `python -m ontology_negotiator.cli`
 - `python -m xiaogugit`
+- `python -m pipeline.cli`
+- `python -m mm_denoise.cli`
+- `python -m ontology_audit_hub.review_cli`
+- `python -m ontology_audit_hub.qa_cli`
 
 相关实现：
 
 - [`/Users/qiuboyu/Documents/Ontology_Factory/wiki_agent/src/wiki_agent/tools.py`](/Users/qiuboyu/Documents/Ontology_Factory/wiki_agent/src/wiki_agent/tools.py)
 - [`/Users/qiuboyu/Documents/Ontology_Factory/wiki_agent/src/wiki_agent/prompts.py`](/Users/qiuboyu/Documents/Ontology_Factory/wiki_agent/src/wiki_agent/prompts.py)
 
-## 10. 当前推荐组合
+## 12. 当前推荐组合
 
 如果是人工调试，推荐顺序：
 
@@ -313,21 +387,23 @@ python -m xiaogugit --root-dir /Users/qiuboyu/Documents/Ontology_Factory/xiaogug
 5. `python -m ontology_core.cli search` 看 canonical 结果
 6. `wikimg search/show` 看现有 wiki 页面
 7. `python -m ontology_negotiator.cli classify` 做达类私分类
-8. `python -m xiaogugit ...` 管理结构化 JSON 的项目、版本、Diff 与回滚
+8. `python -m pipeline.cli` 跑整条流水线
+9. `python -m mm_denoise.cli` 单独排查预处理去噪效果
+10. `python -m xiaogugit ...` 管理结构化 JSON 的项目、版本、Diff 与回滚
 
-## 11. 测试状态
+## 13. 测试状态
 
-CLI 相关回归已覆盖，最近一次全量测试结果：
-
-- `25 passed`
+CLI 相关回归已覆盖，建议重点关注以下测试：
 
 相关测试：
 
 - [`/Users/qiuboyu/Documents/Ontology_Factory/storage/tests/test_cli_tools.py`](/Users/qiuboyu/Documents/Ontology_Factory/storage/tests/test_cli_tools.py)
 - [`/Users/qiuboyu/Documents/Ontology_Factory/wiki_agent/tests/test_wiki_agent_runtime.py`](/Users/qiuboyu/Documents/Ontology_Factory/wiki_agent/tests/test_wiki_agent_runtime.py)
+- [`/Users/qiuboyu/Documents/Ontology_Factory/pipeline/tests/test_cli_help.py`](/Users/qiuboyu/Documents/Ontology_Factory/pipeline/tests/test_cli_help.py)
 - [`/Users/qiuboyu/Documents/Ontology_Factory/pipeline/tests/test_pipeline_wiki_runner.py`](/Users/qiuboyu/Documents/Ontology_Factory/pipeline/tests/test_pipeline_wiki_runner.py)
+- [`/Users/qiuboyu/Documents/Ontology_Factory/wiki_agent/tests/test_aft_cli_integration.py`](/Users/qiuboyu/Documents/Ontology_Factory/wiki_agent/tests/test_aft_cli_integration.py)
 
-## 12. AFT Review And QA CLI
+## 14. AFT Review And QA CLI
 
 New AFT module CLIs are also callable from the main `wiki_agent` flow through `run_command`.
 

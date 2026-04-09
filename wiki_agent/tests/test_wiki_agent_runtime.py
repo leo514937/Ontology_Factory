@@ -127,6 +127,31 @@ def test_toolbox_run_command_rejects_xiaogugit_path_outside_workspace(tmp_path: 
         )
 
 
+def test_toolbox_run_command_supports_cli_help_discovery(tmp_path: Path) -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    store = OntologyStore(str(tmp_path / "wiki.sqlite3"))
+    toolbox = WikiAgentToolbox(
+        store=store,
+        document_id="doc_demo",
+        doc_name="测试文档",
+        clean_text="测试内容",
+        run_id="run_demo",
+        workspace_root=repo_root,
+        target_folder=tmp_path,
+    )
+
+    for command in [
+        "wikimg --help",
+        "python -m pipeline.cli --help",
+        "python -m mm_denoise.cli --help",
+        "python -m ontology_negotiator.cli --help",
+    ]:
+        result = toolbox.tool_run_command(command)
+        assert result["returncode"] == 0, command
+        assert "usage:" in result["stdout"].lower(), command
+        assert result["stderr"] == "", command
+
+
 class FakeTraceClient:
     def is_enabled(self) -> bool:
         return True

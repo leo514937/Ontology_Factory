@@ -9,21 +9,29 @@ from ontology_store import OntologyStore, normalize_alias
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Ontology storage query CLI.")
+    parser = argparse.ArgumentParser(
+        description="本体存储查询 (Storage) 命令行工具。 "
+        "从本地 SQLite 数据库中搜索并检索实体、关系和分类。 "
+        "返回统一的 JSON 格式结果。"
+    )
     subparsers = parser.add_subparsers(dest="command")
 
-    query_parser = subparsers.add_parser("query", help="Query wiki/canonical data from storage.")
-    query_parser.add_argument("--database", required=True, help="SQLite database path.")
+    query_parser = subparsers.add_parser(
+        "query",
+        help="对存储执行搜索查询。返回包含结果项和总数的 JSON。"
+    )
+    query_parser.add_argument("--database", required=True, help="SQLite 数据库文件 (.sqlite3) 的路径。")
     query_parser.add_argument(
         "--kind",
         required=True,
         choices=["pages", "entities", "relations", "classifications"],
-        help="Which storage view to query.",
+        help="要查询的具体存储类型：'pages' (原始 wiki 页面), 'entities' (规范实体), "
+             "'relations' (语义关系), 或 'classifications' (本体标签)。",
     )
-    query_parser.add_argument("--query", default="", help="Optional fuzzy query text.")
-    query_parser.add_argument("--limit", type=int, default=10, help="Maximum number of results.")
-    query_parser.add_argument("--output", default="", help="Optional output JSON path.")
-    query_parser.add_argument("--stdout", action="store_true", help="Print JSON to stdout.")
+    query_parser.add_argument("--query", default="", help="用于过滤结果的模糊搜索文本。")
+    query_parser.add_argument("--limit", type=int, default=10, help="要返回的最大结果项数量。")
+    query_parser.add_argument("--output", default="", help="可选：将查询结果保存为 JSON 文件的路径。")
+    query_parser.add_argument("--stdout", action="store_true", help="在标准输出中显式打印生成的 JSON。")
     args = parser.parse_args(argv)
 
     if args.command != "query":

@@ -25,3 +25,5 @@ preprocess/run.log
 artifacts/
 .test-artifacts/
 *.log
+doc/
+architecture_ascii.md
