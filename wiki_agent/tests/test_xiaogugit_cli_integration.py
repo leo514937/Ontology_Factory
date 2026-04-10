@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 import uuid
 from pathlib import Path
 
@@ -44,7 +45,7 @@ def test_toolbox_run_command_allows_xiaogugit_module_with_workspace_paths(
     )
 
     def fake_run(argv, **kwargs):
-        assert argv[:3] == ["python", "-m", "xiaogugit"]
+        assert argv[:4] == [sys.executable, str((Path(__file__).resolve().parents[2] / "tools" / "cli_baseline.py").resolve()), "run", "xiaogugit"]
         assert kwargs["env"]["PYTHONPATH"].split(os.pathsep)[0] == str(workspace_root.resolve())
         assert str((workspace_root / "storage").resolve()) in argv
         assert str(payload_path.resolve()) in argv

@@ -8,10 +8,10 @@ from wikimg.core import (
     WikiError,
     create_document,
     delete_document,
-    discover_workspace,
     doctor,
     init_workspace,
     launch_editor,
+    load_workspace,
     move_document,
     normalize_layer,
     render_rows,
@@ -95,6 +95,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    explicit_root = str(args.root).strip() not in {"", "."}
 
     try:
         if args.command == "init":
@@ -102,7 +103,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Initialized wiki workspace at {workspace.root}")
             return 0
 
-        workspace = discover_workspace(Path(args.root))
+        workspace = load_workspace(
+            Path(args.root),
+            search_parents=not explicit_root,
+            create_if_missing=explicit_root,
+        )
 
         if args.command == "new":
             document = create_document(workspace, args.layer, args.title, slug=args.slug)

@@ -72,6 +72,11 @@ def _cmd_write(args: argparse.Namespace) -> dict[str, Any]:
     )
 
 
+def _cmd_doctor(args: argparse.Namespace) -> dict[str, Any]:
+    manager = _build_manager(args)
+    return manager.doctor(args.project_id, args.filename)
+
+
 def _cmd_read(args: argparse.Namespace) -> dict[str, Any]:
     manager = _build_manager(args)
     return {"data": manager.read_version(args.project_id, args.filename, args.commit_id)}
@@ -335,6 +340,12 @@ def build_parser() -> argparse.ArgumentParser:
     _register_rollback_subcommands(subparsers)
     _register_delete_subcommands(subparsers)
 
+    doctor_parser = subparsers.add_parser("doctor", help="Inspect gitpython availability, project status, and auto basevision.")
+    _register_common_arguments(doctor_parser)
+    doctor_parser.add_argument("--project-id", default=None, help="Optional project identifier.")
+    doctor_parser.add_argument("--filename", default=None, help="Optional filename to inspect.")
+    doctor_parser.set_defaults(handler=_cmd_doctor)
+
     write_parser = subparsers.add_parser("write", help="Write JSON data and create a version commit.")
     _register_common_arguments(write_parser)
     write_parser.add_argument("--project-id", required=True, help="Project identifier.")
@@ -342,7 +353,7 @@ def build_parser() -> argparse.ArgumentParser:
     write_parser.add_argument("--message", required=True, help="Commit message.")
     write_parser.add_argument("--agent-name", required=True, help="Agent name.")
     write_parser.add_argument("--committer-name", required=True, help="Committer name.")
-    write_parser.add_argument("--basevision", required=True, type=int, help="Base version identifier.")
+    write_parser.add_argument("--basevision", default="auto", help="Base version identifier or 'auto'.")
     write_source = write_parser.add_mutually_exclusive_group(required=True)
     write_source.add_argument("--data-file", help="Path to a JSON file.")
     write_source.add_argument("--data-json", help="Inline JSON string.")

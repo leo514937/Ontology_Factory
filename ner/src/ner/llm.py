@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import importlib
 from typing import Any
-
-import httpx
 from pydantic import BaseModel, Field
 
 try:
@@ -14,6 +13,13 @@ except ModuleNotFoundError:  # pragma: no cover - optional dependency for local 
         return None
 
 from ner.schema import NerEntity
+
+
+def _require_httpx():
+    try:
+        return importlib.import_module("httpx")
+    except ModuleNotFoundError as exc:
+        raise RuntimeError("缺少可选依赖 httpx，启用 OpenRouter 能力前请先安装它。") from exc
 
 
 class OpenRouterConfig(BaseModel):
@@ -204,6 +210,7 @@ class OpenRouterClient:
                 {"role": "user", "content": user_prompt},
             ],
         }
+        httpx = _require_httpx()
         with httpx.Client(timeout=self.config.timeout_s) as client:
             response = client.post(url, headers=headers, json=payload)
             response.raise_for_status()

@@ -435,3 +435,38 @@ Main-flow allowlist now includes:
 
 - `python -m ontology_audit_hub.review_cli`
 - `python -m ontology_audit_hub.qa_cli`
+
+## Doctor First
+
+在首次执行任意工程相关 CLI 之前，先跑一次统一预检：
+
+```bash
+python tools/cli_baseline.py doctor
+python tools/cli_baseline.py doctor --cli mm-denoise --cli ner --cli entity-relation --cli ontology-core --cli ontology-store --cli xiaogugit --cli pipeline
+```
+
+推荐顺序固定为：
+
+1. `doctor`
+2. 目标 CLI 的 `--help`
+3. 真实执行命令
+
+## Engineering-Doc Quick Path
+
+当任务是“工程文档清洗、抽取、结构化并写入 `xiaogugit`”时，优先直接使用 `pipeline` 的工程文档模式，而不是手工分散拼接多条命令：
+
+```bash
+python tools/cli_baseline.py run pipeline -- --help
+python tools/cli_baseline.py run pipeline -- --input <file> --mode engineering-doc
+python tools/cli_baseline.py run pipeline -- --input <file> --mode engineering-doc --project-id <project_id> --filename <filename> --xiaogugit-root <root_dir>
+```
+
+该模式会按固定顺序编排：
+
+- `mm-denoise`
+- `ner`
+- `entity-relation`
+- `ontology-core`
+- `ontology-store` 回退补全
+- 结构化 JSON
+- `xiaogugit` 写入与验证

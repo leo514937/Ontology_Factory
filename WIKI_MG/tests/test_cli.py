@@ -84,6 +84,22 @@ class WikiCliTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0)
             self.assertFalse(moved_path.exists())
 
+    @unittest.skipIf(sys.version_info[:2] < (3, 10), "wikimg requires Python 3.10+")
+    def test_explicit_root_uses_exact_workspace_instead_of_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            parent = Path(temp_dir)
+            child = parent / "nested"
+            child.mkdir()
+
+            result = run_cli("init", cwd=parent)
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+            result = run_cli("--root", str(child), "new", "domain", "Child Topic", cwd=parent)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue((child / ".wikimg" / "config.json").exists())
+            self.assertTrue((child / "wiki" / "domain" / "child-topic.md").exists())
+            self.assertFalse((parent / "wiki" / "domain" / "child-topic.md").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

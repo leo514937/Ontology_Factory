@@ -1,0 +1,44 @@
+{
+  "common": {
+    "required": [
+      {
+        "module": "pydantic",
+        "package": "pydantic"
+      }
+    ]
+  },
+  "clis": {
+    "mm-denoise": {
+      "optional": [
+        {
+          "module": "charset_normalizer",
+          "package": "charset-normalizer"
+        },
+        {
+          "module": "bs4",
+          "package": "beautifulsoup4"
+        },
+        {
+          "module": "httpx",
+          "package": "httpx"
+        }
+      ]
+    },
+    "ner": {
+      "optional": [
+        {
+          "module": "httpx",
+          "package": "httpx"
+        }
+      ]
+    },
+    "xiaogugit": {
+      "optional": [
+        {
+          "module": "git",
+          "package": "gitpython"
+        }
+      ]
+    }
+  }
+}

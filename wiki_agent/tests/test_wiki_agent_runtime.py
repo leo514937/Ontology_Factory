@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import os
+import shlex
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -90,7 +92,7 @@ def test_toolbox_run_command_allows_xiaogugit_module_with_workspace_paths(
     )
 
     def fake_run(argv, **kwargs):
-        assert argv[:3] == ["python", "-m", "xiaogugit"]
+        assert argv[:4] == [sys.executable, str((Path(__file__).resolve().parents[2] / "tools" / "cli_baseline.py").resolve()), "run", "xiaogugit"]
         assert kwargs["env"]["PYTHONPATH"].split(os.pathsep)[0] == str(tmp_path.resolve())
         return subprocess.CompletedProcess(argv, 0, stdout='{"projects":[]}\n', stderr="")
 
@@ -150,6 +152,40 @@ def test_toolbox_run_command_supports_cli_help_discovery(tmp_path: Path) -> None
         assert result["returncode"] == 0, command
         assert "usage:" in result["stdout"].lower(), command
         assert result["stderr"] == "", command
+
+
+def test_toolbox_run_command_accepts_quoted_wikimg_root_on_windows_style_commands(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target_dir = tmp_path / "docs"
+    target_dir.mkdir()
+    store = OntologyStore(str(tmp_path / "wiki.sqlite3"))
+    toolbox = WikiAgentToolbox(
+        store=store,
+        document_id="doc_demo",
+        doc_name="测试文档",
+        clean_text="测试内容",
+        run_id="run_demo",
+        workspace_root=tmp_path,
+        target_folder=target_dir,
+    )
+    seen_argv: list[list[str]] = []
+
+    def fake_run(argv, **kwargs):
+        seen_argv.append(list(argv))
+        return subprocess.CompletedProcess(argv, 0, stdout="[]\n", stderr="")
+
+    monkeypatch.setattr("wiki_agent.tools.subprocess.run", fake_run)
+
+    result = toolbox.tool_run_command(
+        f"wikimg --root {shlex.quote(str(tmp_path.resolve()))} search sample --content"
+    )
+
+    assert result["returncode"] == 0
+    assert seen_argv
+    assert seen_argv[0][:3] == [sys.executable, "-m", "wikimg"]
+    assert str(tmp_path.resolve()) in seen_argv[0]
 
 
 class FakeTraceClient:
@@ -222,3 +258,94 @@ def test_runtime_exposes_last_llm_request_and_response(tmp_path: Path) -> None:
     assert result["page_llm_memory"][0]["resolved_page_title"] == result["page_llm_memory"][0]["title"]
     assert result["page_llm_memory"][0]["request"]["payload"]["messages"]
     assert result["page_llm_memory"][0]["response"]["raw_text"]
+
+
+def test_toolbox_run_command_accepts_cli_baseline_script_entry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    target_dir = tmp_path / "docs"
+    target_dir.mkdir()
+    input_path = target_dir / "note.txt"
+    input_path.write_text("智能养鱼系统连接 OneNet", encoding="utf-8")
+    store = OntologyStore(str(tmp_path / "wiki.sqlite3"))
+    toolbox = WikiAgentToolbox(
+        store=store,
+        document_id="doc_demo",
+        doc_name="测试文档",
+        clean_text="智能养鱼系统连接 OneNet",
+        run_id="run_demo",
+        workspace_root=tmp_path,
+        target_folder=target_dir,
+    )
+
+    def fake_run(argv, **kwargs):
+        assert argv[:4] == [
+            sys.executable,
+            str((Path(__file__).resolve().parents[2] / "tools" / "cli_baseline.py").resolve()),
+            "run",
+            "ner",
+        ]
+        assert str(input_path.resolve()) in argv
+        return subprocess.CompletedProcess(argv, 0, stdout='{"ok":true}\n', stderr="")
+
+    monkeypatch.setattr("wiki_agent.tools.subprocess.run", fake_run)
+
+    result = toolbox.tool_run_command(
+        f"python tools/cli_baseline.py run ner -- extract --input {str(input_path.resolve())} --stdout"
+    )
+
+    assert result["returncode"] == 0
+    assert result["stdout"] == '{"ok":true}'
+
+
+def test_toolbox_run_command_falls_back_when_rg_is_unavailable(tmp_path: Path) -> None:
+    target_dir = tmp_path / "docs"
+    target_dir.mkdir()
+    (target_dir / "note.txt").write_text("智能养鱼系统连接 OneNet", encoding="utf-8")
+    store = OntologyStore(str(tmp_path / "wiki.sqlite3"))
+    toolbox = WikiAgentToolbox(
+        store=store,
+        document_id="doc_demo",
+        doc_name="测试文档",
+        clean_text="智能养鱼系统连接 OneNet",
+        run_id="run_demo",
+        workspace_root=tmp_path,
+        target_folder=target_dir,
+    )
+
+    result = toolbox.tool_run_command("rg -n OneNet .")
+
+    assert result["returncode"] == 0
+    assert "OneNet" in result["stdout"]
+
+
+def test_toolbox_run_command_uses_longer_timeout_for_pipeline_runs(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target_dir = tmp_path / "docs"
+    target_dir.mkdir()
+    input_path = target_dir / "note.txt"
+    input_path.write_text("智能养鱼系统连接 OneNet", encoding="utf-8")
+    store = OntologyStore(str(tmp_path / "wiki.sqlite3"))
+    toolbox = WikiAgentToolbox(
+        store=store,
+        document_id="doc_demo",
+        doc_name="测试文档",
+        clean_text="智能养鱼系统连接 OneNet",
+        run_id="run_demo",
+        workspace_root=tmp_path,
+        target_folder=target_dir,
+    )
+    seen_timeouts: list[int] = []
+
+    def fake_run(argv, **kwargs):
+        seen_timeouts.append(int(kwargs["timeout"]))
+        return subprocess.CompletedProcess(argv, 0, stdout='{"ok":true}\n', stderr="")
+
+    monkeypatch.setattr("wiki_agent.tools.subprocess.run", fake_run)
+
+    toolbox.tool_run_command("python tools/cli_baseline.py run pipeline -- --help")
+    toolbox.tool_run_command(
+        f"python tools/cli_baseline.py run pipeline -- --input {str(input_path.resolve())} --mode engineering-doc"
+    )
+
+    assert seen_timeouts[0] < seen_timeouts[1]

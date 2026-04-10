@@ -67,9 +67,9 @@ def test_toolbox_run_command_allows_aft_review_request_file(
     toolbox = _toolbox(workspace_root)
 
     def fake_run(argv, **kwargs):
-        assert argv[:3] == ["python", "-m", "ontology_audit_hub.review_cli"]
+        assert argv[:3] == [sys.executable, "-m", "ontology_audit_hub.review_cli"]
         pythonpath = kwargs["env"]["PYTHONPATH"].split(os.pathsep)
-        assert str((workspace_root / "aft" / "aft-main" / "src").resolve()) in pythonpath
+        assert str((ROOT / "aft" / "aft-main" / "src").resolve()) in pythonpath
         assert str(request_path.resolve()) in argv
         return subprocess.CompletedProcess(argv, 0, stdout='{"summary":"ok"}\n', stderr="")
 
@@ -107,9 +107,9 @@ def test_toolbox_run_command_allows_aft_qa_workspace_files(
     toolbox = _toolbox(workspace_root)
 
     def fake_run(argv, **kwargs):
-        assert argv[:3] == ["python", "-m", expected_module]
+        assert argv[:3] == [sys.executable, "-m", expected_module]
         pythonpath = kwargs["env"]["PYTHONPATH"].split(os.pathsep)
-        assert str((workspace_root / "aft" / "aft-main" / "src").resolve()) in pythonpath
+        assert str((ROOT / "aft" / "aft-main" / "src").resolve()) in pythonpath
         assert str(payload_path.resolve()) in argv
         return subprocess.CompletedProcess(argv, 0, stdout='{"answer":"ok"}\n', stderr="")
 

@@ -4,9 +4,6 @@ import re
 import subprocess
 from datetime import datetime
 
-import git
-
-
 class XiaoGuGitManager:
     META_FILE = "project_meta.json"
     DEFAULT_STATUS = "开发中"
@@ -21,11 +18,18 @@ class XiaoGuGitManager:
         self.root_dir = os.path.abspath(root_dir)
         os.makedirs(self.root_dir, exist_ok=True)
 
+    def _git_module(self):
+        try:
+            import git
+        except ModuleNotFoundError as exc:
+            raise RuntimeError("缺少 GitPython 依赖，请先安装 gitpython。") from exc
+        return git
+
     def _now(self):
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     def _system_actor(self):
-        return git.Actor("System", "system@local")
+        return self._git_module().Actor("System", "system@local")
 
     def _validate_project_id(self, project_id):
         if not re.fullmatch(r"[A-Za-z0-9_-]+", project_id or ""):
@@ -59,6 +63,7 @@ class XiaoGuGitManager:
     def _get_repo(self, project_id, create=False):
         path = self._project_path(project_id)
         git_dir = os.path.join(path, ".git")
+        git = self._git_module()
         if not os.path.exists(git_dir):
             if not create:
                 raise FileNotFoundError(f"项目 {project_id} 不存在")
@@ -75,6 +80,56 @@ class XiaoGuGitManager:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
+
+    def resolve_basevision(self, project_id, filename, basevision):
+        safe_filename = self._validate_filename(filename)
+        tree = self.get_file_version_tree(project_id, safe_filename)
+        versions = tree["versions"]
+        if basevision in {None, "", "auto", "latest"}:
+            return versions[-1]["version_id"] if versions else 0
+        normalized = int(basevision)
+        if not versions:
+            if normalized != 0:
+                raise ValueError(f"首次写入文件 {safe_filename} 时 basevision 必须为 0")
+            return 0
+        if normalized < 0:
+            raise ValueError("basevision 不能小于 0")
+        if normalized == 0:
+            return versions[-1]["version_id"]
+        if not any(version["version_id"] == normalized for version in versions):
+            raise FileNotFoundError(f"文件 {safe_filename} 的版本 {normalized} 不存在")
+        return normalized
+
+    def doctor(self, project_id=None, filename=None):
+        git_available = True
+        git_error = ""
+        try:
+            self._git_module()
+        except RuntimeError as exc:
+            git_available = False
+            git_error = str(exc)
+
+        payload = {
+            "root_dir": self.root_dir,
+            "gitpython": {
+                "available": git_available,
+                "error": git_error,
+            },
+            "project_id": project_id,
+            "project_exists": False,
+            "filename": filename,
+            "resolved_basevision": 0,
+            "version_tree": None,
+        }
+        if not project_id:
+            return payload
+        payload["project_exists"] = self._repo_exists(project_id)
+        if not payload["project_exists"]:
+            return payload
+        if filename:
+            payload["version_tree"] = self.get_file_version_tree(project_id, filename)
+            payload["resolved_basevision"] = self.resolve_basevision(project_id, filename, "auto")
+        return payload
 
     def _default_meta(self, project_id):
         now = self._now()
@@ -200,7 +255,7 @@ class XiaoGuGitManager:
         file_path = os.path.join(self._project_path(project_id), safe_filename)
         tree = self.get_file_version_tree(project_id, safe_filename)
         versions = tree["versions"]
-        normalized_basevision = int(basevision)
+        normalized_basevision = self.resolve_basevision(project_id, safe_filename, basevision)
         if not versions:
             if normalized_basevision != 0:
                 raise ValueError(f"文件 {safe_filename} 首次写入时 basevision 必须为 0")
@@ -237,7 +292,7 @@ class XiaoGuGitManager:
         self._save_meta(project_id, meta, repo)
 
         repo.git.add(safe_filename)
-        author = git.Actor(committer_name, f"{committer_name}@local")
+        author = self._git_module().Actor(committer_name, f"{committer_name}@local")
         if repo.is_dirty(untracked_files=True):
             commit = repo.index.commit(
                 full_message,
@@ -298,7 +353,7 @@ class XiaoGuGitManager:
 
         commit = repo.index.commit(
             full_message,
-            author=git.Actor(committer_name, f"{committer_name}@local"),
+            author=self._git_module().Actor(committer_name, f"{committer_name}@local"),
         )
         return {
             "status": "success",
@@ -625,7 +680,7 @@ class XiaoGuGitManager:
         if repo.is_dirty(untracked_files=True):
             commit = repo.index.commit(
                 f"System: 项目状态更新为{status}",
-                author=git.Actor(operator, f"{operator}@local"),
+                author=self._git_module().Actor(operator, f"{operator}@local"),
             )
             commit_id = commit.hexsha
         return {"status": "success", "commit_id": commit_id, "project": self.get_project_info(project_id)}

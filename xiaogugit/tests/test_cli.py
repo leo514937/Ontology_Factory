@@ -163,6 +163,37 @@ def test_write_and_read_latest(storage_root: Path, capsys: pytest.CaptureFixture
     assert payload == {"data": expected}
 
 
+def test_write_supports_auto_basevision(storage_root: Path, capsys: pytest.CaptureFixture[str], test_root: Path) -> None:
+    manager = XiaoGuGitManager(root_dir=str(storage_root))
+    manager.init_project("demo")
+    data_file = test_root / "ontology.json"
+    _write_json(data_file, {"version": 1})
+
+    exit_code, payload, stderr = _invoke(
+        capsys,
+        "--root-dir",
+        str(storage_root),
+        "write",
+        "--project-id",
+        "demo",
+        "--filename",
+        "ontology.json",
+        "--message",
+        "AI: ontology v1",
+        "--agent-name",
+        "agent-1",
+        "--committer-name",
+        "Teacher",
+        "--data-file",
+        str(data_file),
+    )
+
+    assert exit_code == 0
+    assert stderr == ""
+    assert payload["version_id"] == 1
+    assert payload["basevision"] == 0
+
+
 def test_second_write_with_data_json_and_read_historical_commit(
     storage_root: Path,
     capsys: pytest.CaptureFixture[str],
@@ -317,6 +348,25 @@ def test_version_tree_show_and_read(seeded_project: dict[str, Any], capsys: pyte
         1,
         "ontology.json",
     )
+
+
+def test_doctor_reports_resolved_basevision(seeded_project: dict[str, Any], capsys: pytest.CaptureFixture[str]) -> None:
+    exit_code, payload, stderr = _invoke(
+        capsys,
+        "--root-dir",
+        seeded_project["root_dir"],
+        "doctor",
+        "--project-id",
+        seeded_project["project_id"],
+        "--filename",
+        "ontology.json",
+    )
+
+    assert exit_code == 0
+    assert stderr == ""
+    assert payload["project_exists"] is True
+    assert payload["resolved_basevision"] == 2
+    assert payload["version_tree"]["latest_version_id"] == 2
 
 
 def test_diff_commits_and_versions(seeded_project: dict[str, Any], capsys: pytest.CaptureFixture[str]) -> None:

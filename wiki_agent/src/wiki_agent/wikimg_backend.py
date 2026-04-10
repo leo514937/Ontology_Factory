@@ -8,8 +8,7 @@ from typing import Any
 
 from wikimg.core import (
     create_document,
-    discover_workspace,
-    init_workspace,
+    load_workspace,
     move_document,
     normalize_layer,
     resolve_document,
@@ -22,10 +21,11 @@ from wikimg.core import (
 class WikimgBackend:
     def __init__(self, workspace_root: str | Path) -> None:
         self.workspace_root = Path(workspace_root).resolve()
-        try:
-            self.workspace = discover_workspace(self.workspace_root)
-        except Exception:
-            self.workspace = init_workspace(self.workspace_root)
+        self.workspace = load_workspace(
+            self.workspace_root,
+            search_parents=False,
+            create_if_missing=True,
+        )
 
     def run_cli(self, *args: str) -> dict[str, Any]:
         command = [sys.executable, "-m", "wikimg", "--root", str(self.workspace.root), *args]

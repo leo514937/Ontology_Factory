@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from pipeline.adapters import canonical_entity_to_graph
 from pipeline.bootstrap import ensure_local_imports, workspace_root
 from pipeline.config import PipelineConfig, load_pipeline_config
+from pipeline.engineering_doc import EngineeringDocRunResult, run_engineering_doc_pipeline
 
 ensure_local_imports()
 
@@ -255,6 +256,11 @@ def _run_wiki_documents(
             ner_document=ner_document,
             relation_document=relation_document,
             document_path=str(input_file),
+            metadata_bundle={
+                "document_context": {
+                    "clean_text_path": str(clean_text_path),
+                }
+            },
         )
         processed_documents.append(str(input_file))
         tool_summary.update(wiki_result.get("tool_summary", {}))

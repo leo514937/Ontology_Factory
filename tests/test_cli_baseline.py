@@ -5,7 +5,7 @@ import sys
 import tempfile
 import unittest
 
-from tools.cli_baseline import run_cli, smoke_clis
+from tools.cli_baseline import collect_dependency_status, doctor_clis, run_cli, smoke_clis
 
 
 class CliBaselineTests(unittest.TestCase):
@@ -33,6 +33,28 @@ class CliBaselineTests(unittest.TestCase):
         expected_status = "skipped" if sys.version_info[:2] < (3, 11) else "passed"
 
         self.assertEqual([result["status"] for result in results], [expected_status, expected_status])
+
+    def test_doctor_reports_defaults_and_dependency_metadata(self) -> None:
+        report = doctor_clis(["mm-denoise"], include_help=False, include_smoke=False)[0]
+
+        self.assertEqual(report["cli"], "mm-denoise")
+        self.assertTrue(report["defaults"]["config_path"].endswith("preprocess\\config.no_models.yaml"))
+        self.assertIn("dependencies", report)
+        self.assertIn("optional", report["dependencies"])
+
+    def test_collect_dependency_status_marks_missing_modules(self) -> None:
+        report = collect_dependency_status(
+            [
+                {"module": "json", "package": "json", "optional": False},
+                {"module": "module_that_should_not_exist_for_cli_baseline_tests", "package": "missing", "optional": True},
+            ]
+        )
+
+        self.assertEqual(report["required_missing"], [])
+        self.assertEqual(
+            report["optional_missing"],
+            [{"module": "module_that_should_not_exist_for_cli_baseline_tests", "package": "missing"}],
+        )
 
 
 if __name__ == "__main__":

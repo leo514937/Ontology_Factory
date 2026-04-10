@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import subprocess
@@ -30,6 +31,10 @@ COMMON_PYTHONPATHS = (
     REPO_ROOT / "pipeline" / "src",
     REPO_ROOT / "aft" / "aft-main" / "src",
 )
+DEPENDENCY_MANIFEST_PATH = REPO_ROOT / "agent_runtime_dependencies.json"
+DEFAULT_PREPROCESS_CONFIG = REPO_ROOT / "preprocess" / "config.no_models.yaml"
+DEFAULT_DATABASE_PATH = REPO_ROOT / "storage" / "data" / "classification_store.sqlite3"
+DEFAULT_XIAOGUGIT_ROOT = REPO_ROOT / "xiaogugit" / "storage"
 
 
 @dataclass(frozen=True)
@@ -155,7 +160,7 @@ def run_cli(
     *,
     cwd: Path | None = None,
     timeout: int = 30,
-) -> subprocess.CompletedProcess[str]:
+    ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         build_command(cli_name, args),
         cwd=str(cwd or REPO_ROOT),
@@ -165,6 +170,124 @@ def run_cli(
         check=False,
         timeout=timeout,
     )
+
+
+def collect_dependency_status(entries: Sequence[dict[str, object]]) -> dict[str, object]:
+    checked: list[dict[str, object]] = []
+    required_missing: list[dict[str, str]] = []
+    optional_missing: list[dict[str, str]] = []
+    for entry in entries:
+        module = str(entry.get("module", "")).strip()
+        package = str(entry.get("package", module)).strip() or module
+        optional = bool(entry.get("optional", False))
+        available = bool(module) and importlib.util.find_spec(module) is not None
+        item = {
+            "module": module,
+            "package": package,
+            "optional": optional,
+            "available": available,
+        }
+        checked.append(item)
+        if available:
+            continue
+        missing_item = {"module": module, "package": package}
+        if optional:
+            optional_missing.append(missing_item)
+        else:
+            required_missing.append(missing_item)
+    return {
+        "checked": checked,
+        "optional": [item for item in checked if item["optional"]],
+        "required_missing": required_missing,
+        "optional_missing": optional_missing,
+    }
+
+
+def _load_dependency_manifest() -> dict[str, object]:
+    if not DEPENDENCY_MANIFEST_PATH.exists():
+        return {}
+    return json.loads(DEPENDENCY_MANIFEST_PATH.read_text(encoding="utf-8"))
+
+
+def _dependency_entries_for_cli(cli_name: str) -> list[dict[str, object]]:
+    manifest = _load_dependency_manifest()
+    common_required = list(manifest.get("common", {}).get("required", [])) if isinstance(manifest, dict) else []
+    cli_config = {}
+    if isinstance(manifest, dict):
+        cli_config = dict(manifest.get("clis", {}).get(cli_name, {}) or {})
+    entries: list[dict[str, object]] = []
+    for item in common_required:
+        entries.append({**dict(item), "optional": False})
+    for item in cli_config.get("required", []):
+        entries.append({**dict(item), "optional": False})
+    for item in cli_config.get("optional", []):
+        entries.append({**dict(item), "optional": True})
+    return entries
+
+
+def _default_paths_for_cli(cli_name: str) -> dict[str, str]:
+    defaults: dict[str, str] = {}
+    if cli_name in {"mm-denoise", "pipeline"}:
+        defaults["config_path"] = str(DEFAULT_PREPROCESS_CONFIG)
+    if cli_name in {"ontology-store", "ontology-core", "pipeline"}:
+        defaults["database_path"] = str(DEFAULT_DATABASE_PATH)
+    if cli_name in {"xiaogugit", "pipeline"}:
+        defaults["xiaogugit_root"] = str(DEFAULT_XIAOGUGIT_ROOT)
+    return defaults
+
+
+def _help_check(cli_name: str) -> dict[str, object]:
+    spec = CLI_SPECS[cli_name]
+    completed = run_cli(cli_name, spec.help_args, timeout=20)
+    return {
+        "status": "passed" if completed.returncode == 0 else "failed",
+        "command": build_command(cli_name, spec.help_args),
+        "returncode": completed.returncode,
+        "stdout": completed.stdout.strip(),
+        "stderr": completed.stderr.strip(),
+    }
+
+
+def doctor_cli(
+    cli_name: str,
+    *,
+    include_help: bool = True,
+    include_smoke: bool = True,
+) -> dict[str, object]:
+    spec = CLI_SPECS[cli_name]
+    dependency_status = collect_dependency_status(_dependency_entries_for_cli(cli_name))
+    payload: dict[str, object] = {
+        "cli": cli_name,
+        "module": spec.module,
+        "description": spec.description,
+        "interpreter": sys.executable,
+        "python": {
+            "current": _python_version_label(_current_python_tuple()),
+            "required": _python_version_label(spec.min_python),
+            "supported": supports_current_python(spec),
+        },
+        "defaults": _default_paths_for_cli(cli_name),
+        "dependencies": dependency_status,
+        "checks": {},
+    }
+    if include_help:
+        payload["checks"]["help"] = _help_check(cli_name)
+    if include_smoke:
+        payload["checks"]["smoke"] = smoke_cli(cli_name)
+    return payload
+
+
+def doctor_clis(
+    cli_names: Sequence[str] | None = None,
+    *,
+    include_help: bool = True,
+    include_smoke: bool = True,
+) -> list[dict[str, object]]:
+    names = list(cli_names) if cli_names else list(CLI_SPECS)
+    return [
+        doctor_cli(name, include_help=include_help, include_smoke=include_smoke)
+        for name in names
+    ]
 
 
 def _smoke_args(cli_name: str) -> list[str]:
@@ -249,6 +372,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="Limit smoke checks to specific CLIs.",
     )
 
+    doctor_parser = subparsers.add_parser("doctor", help="Inspect runtime dependencies, defaults, and help/smoke status.")
+    doctor_parser.add_argument(
+        "--cli",
+        dest="cli_names",
+        action="append",
+        choices=sorted(CLI_SPECS),
+        help="Limit doctor checks to specific CLIs.",
+    )
+    doctor_parser.add_argument("--skip-help", action="store_true", help="Skip --help verification.")
+    doctor_parser.add_argument("--skip-smoke", action="store_true", help="Skip smoke verification.")
+
     return parser
 
 
@@ -288,6 +422,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         results = smoke_clis(args.cli_names)
         _render_json(results)
         return 1 if any(result["status"] == "failed" for result in results) else 0
+
+    if args.command == "doctor":
+        results = doctor_clis(
+            args.cli_names,
+            include_help=not args.skip_help,
+            include_smoke=not args.skip_smoke,
+        )
+        _render_json(results)
+        has_required_missing = any(item["dependencies"]["required_missing"] for item in results)
+        has_failed_checks = any(
+            check.get("status") == "failed"
+            for item in results
+            for check in item.get("checks", {}).values()
+            if isinstance(check, dict)
+        )
+        return 1 if has_required_missing or has_failed_checks else 0
 
     parser.error(f"unsupported command: {args.command}")
     return 2

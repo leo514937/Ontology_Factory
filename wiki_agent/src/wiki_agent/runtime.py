@@ -514,7 +514,7 @@ class WikiAgentRuntime:
     ) -> tuple[ToolCallDecision | FinalCommitDecision, dict[str, Any]]:
         actions = [str(item.get("action_name", "")) for item in history]
         document_context = metadata_bundle.get("document_context", {})
-        document_path = str(document_context.get("document_path", "")).strip()
+        analysis_path = str(document_context.get("clean_text_path", "") or document_context.get("document_path", "")).strip()
         workspace_root = shlex.quote(str(self.workspace_root))
         topic_query = shlex.quote(topic.title)
         if not any(action == "run_command" and "wikimg" in str(item.get("action_input", {}).get("command", "")) for action, item in ((str(entry.get("action_name", "")), entry) for entry in history)):
@@ -532,24 +532,24 @@ class WikiAgentRuntime:
                 action_name="run_command",
                 action_input={"command": f"rg -n {shlex.quote(topic.title)} ."},
             ), {}
-        if document_path and not any(action == "run_command" and "python -m ner.cli" in str(item.get("action_input", {}).get("command", "")) for action, item in ((str(entry.get("action_name", "")), entry) for entry in history)):
+        if analysis_path and not any(action == "run_command" and " cli_baseline.py run ner " in f" {str(item.get('action_input', {}).get('command', ''))} " for action, item in ((str(entry.get("action_name", "")), entry) for entry in history)):
             return ToolCallDecision(
                 thought="补一层实体线索，方便组织页面内容和关联主题。",
                 action_name="run_command",
                 action_input={
-                    "command": f"python -m ner.cli extract --input {shlex.quote(document_path)} --query {topic_query} --max-sentences 4 --stdout"
+                    "command": f"python tools/cli_baseline.py run ner -- extract --input {shlex.quote(analysis_path)} --query {topic_query} --max-sentences 4 --stdout"
                 },
             ), {}
         if (
-            document_path
+            analysis_path
             and topic.page_type in {"system", "project", "topic"}
-            and not any(action == "run_command" and "python -m entity_relation.cli" in str(item.get("action_input", {}).get("command", "")) for action, item in ((str(entry.get("action_name", "")), entry) for entry in history))
+            and not any(action == "run_command" and " cli_baseline.py run entity-relation " in f" {str(item.get('action_input', {}).get('command', ''))} " for action, item in ((str(entry.get("action_name", "")), entry) for entry in history))
         ):
             return ToolCallDecision(
                 thought="系统或项目主题适合再补一层关系线索。",
                 action_name="run_command",
                 action_input={
-                    "command": f"python -m entity_relation.cli extract --input {shlex.quote(document_path)} --query {topic_query} --max-sentences 6 --stdout"
+                    "command": f"python tools/cli_baseline.py run entity-relation -- extract --input {shlex.quote(analysis_path)} --query {topic_query} --max-sentences 6 --stdout"
                 },
             ), {}
         if (
@@ -835,14 +835,13 @@ class WikiAgentRuntime:
         payload.setdefault("ner_entity_hints", _build_ner_entity_hints(ner_document))
         payload.setdefault("relation_hints", _build_relation_hints(relation_document))
         payload.setdefault("canonical_hints", _build_canonical_hints(self.store, ner_document))
-        payload.setdefault(
-            "document_context",
-            _build_document_context(
-                doc_name=doc_name,
-                document_path=document_path,
-                workspace_root=self.workspace_root,
-            ),
+        default_context = _build_document_context(
+            doc_name=doc_name,
+            document_path=document_path,
+            workspace_root=self.workspace_root,
         )
+        default_context.update(payload.get("document_context", {}))
+        payload["document_context"] = default_context
         return payload
 
     def _chat_json_with_trace(self, *, phase: str, system_prompt: str, user_prompt: str) -> dict[str, Any]:

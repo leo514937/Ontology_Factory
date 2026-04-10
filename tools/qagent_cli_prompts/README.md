@@ -4,57 +4,67 @@
 
 ## 用途
 
-- 给 agent 提供“看完就能直接调用 CLI”的任务提示词。
-- 每个 CLI 单独一份说明文件，减少 agent 自己猜流程。
-- 建议顺序是：先读本索引，再读对应 CLI 提示词，再执行命令。
+- 给 agent 提供“看完就能直接调用 CLI”的任务提示词
+- 每个 CLI 单独一份说明，减少试错
+- 工程文档任务优先走一条快路径，而不是分散拼接命令
 
-## 通用执行规范
+## 固定起手式
 
-- 默认在仓库根目录 `D:\code\onto\Ontology_Factory` 下工作。
-- 先读 [`README_CLI.md`](D:/code/onto/Ontology_Factory/README_CLI.md) 确认可用 CLI。
-- 能用 `python tools/cli_baseline.py run <cli> -- ...` 的场景，优先用它，保证解释器和 `PYTHONPATH` 一致。
-- 每个 CLI 第一次调用前，先执行对应 `--help`。
-- 命令失败时，优先记录 `returncode`、`stdout`、`stderr`，不要直接改流程。
-- 需要程序继续消费时，优先使用 JSON 输出、`--stdout` 或显式 `--output`。
-- 不要在没有真实复现的情况下，声称某个 CLI 缺依赖或无法运行。
-- 如果是参数缺失、项目未初始化或版本基线不匹配，应继续补齐步骤，不要把任务退回给用户手动执行。
+1. 先读 [`README_CLI.md`](D:/code/onto/Ontology_Factory/README_CLI.md)
+2. 先执行 `python tools/cli_baseline.py doctor`
+3. 再执行目标 CLI 的 `--help`
+4. 最后执行真实命令
+
+## 通用执行规则
+
+- 优先使用 `python tools/cli_baseline.py run <cli> -- ...`
+- 命令失败时先看 `returncode`、`stdout`、`stderr`
+- 需要给后续程序继续消费时，优先使用 `--stdout` 或 JSON 文件输出
+- 除非已经验证不适用，否则不要绕开仓库现有 CLI
 
 ## 提示词清单
 
 - `wikimg.md`
+- `mm-denoise.md`
+- `pipeline.md`
+- `engineering-doc-to-xiaogugit.md`
 - `ner.md`
 - `entity-relation.md`
 - `ontology-store.md`
 - `ontology-core.md`
 - `ontology-negotiator.md`
-- `pipeline.md`
-- `mm-denoise.md`
 - `xiaogugit.md`
-- `engineering-doc-to-xiaogugit.md`
 - `ontology-audit-hub.md`
 - `aft-review.md`
 - `aft-qa.md`
 
-## 任务与提示词映射
+## 任务映射
 
-- Wiki 页面浏览、检索、建页：`wikimg.md`
-- 实体抽取：`ner.md`
-- 关系抽取：`entity-relation.md`
-- 库内原始存储检索：`ontology-store.md`
-- 规范实体检索：`ontology-core.md`
-- 本体协商与分类：`ontology-negotiator.md`
-- 单文档/目录主流程运行：`pipeline.md`
-- 文档预处理与清洗：`mm-denoise.md`
-- 结构化版本读写与回滚：`xiaogugit.md`
-- 工程文档清洗、分层、结构化并写入 xiaogugit：`engineering-doc-to-xiaogugit.md`
-- 审计主线、恢复、体检：`ontology-audit-hub.md`
-- GitHub 审查：`aft-review.md`
-- QA 与知识上传维护：`aft-qa.md`
+- Wiki 页面检索与管理：`wikimg.md`
+- 文本清洗：`mm-denoise.md`
+- 主流程编排：`pipeline.md`
+- 工程文档入库：`engineering-doc-to-xiaogugit.md`
+- 实体提取：`ner.md`
+- 关系提取：`entity-relation.md`
+- 存储查询：`ontology-store.md`
+- 核心本体查询：`ontology-core.md`
+- 本体协商：`ontology-negotiator.md`
+- 版本化入库：`xiaogugit.md`
 
-## 推荐选择顺序
+## 工程文档默认路径
 
-- 先做预处理：`mm-denoise.md`
-- 再做抽取：`ner.md`、`entity-relation.md`
-- 再做检索验证：`ontology-store.md`、`ontology-core.md`
-- 再决定是否跑主流程：`pipeline.md`
-- 需要版本化入库时：`xiaogugit.md`
+当任务目标是“工程文档 -> 结构化 JSON -> xiaogugit”时，优先顺序固定为：
+
+1. `README_CLI.md`
+2. 本索引
+3. `pipeline.md`
+4. `engineering-doc-to-xiaogugit.md`
+
+优先命令：
+
+```bash
+python tools/cli_baseline.py run pipeline -- --help
+python tools/cli_baseline.py run pipeline -- --input <file> --mode engineering-doc
+```
+
+只有在 `engineering-doc` 模式经过实际验证后确认不适用时，才拆回 `mm-denoise / ner / entity-relation / ontology-core / ontology-store / xiaogugit` 分步执行。

@@ -68,15 +68,31 @@ def init_workspace(root: Path) -> Workspace:
     return Workspace(root=root, docs_dir=docs_dir, config_path=config_path)
 
 
-def discover_workspace(start: Path | None = None) -> Workspace:
+def discover_workspace(start: Path | None = None, *, search_parents: bool = True) -> Workspace:
     current = (start or Path.cwd()).resolve()
-    for candidate in [current, *current.parents]:
+    candidates = [current, *current.parents] if search_parents else [current]
+    for candidate in candidates:
         config_path = candidate / CONFIG_DIR / CONFIG_FILE
         if config_path.exists():
             config = json.loads(config_path.read_text(encoding="utf-8"))
             docs_dir = candidate / config.get("docs_dir", DEFAULT_DOCS_DIR)
             return Workspace(root=candidate, docs_dir=docs_dir, config_path=config_path)
     raise WikiError("No wiki workspace found. Run 'wikimg init' first.")
+
+
+def load_workspace(
+    root: Path | None = None,
+    *,
+    search_parents: bool = True,
+    create_if_missing: bool = False,
+) -> Workspace:
+    base = (root or Path.cwd()).resolve()
+    try:
+        return discover_workspace(base, search_parents=search_parents)
+    except WikiError:
+        if create_if_missing:
+            return init_workspace(base)
+        raise
 
 
 def normalize_layer(value: str) -> str:
