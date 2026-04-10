@@ -3,7 +3,11 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:  # pragma: no cover - optional local dependency
+    def load_dotenv(*args, **kwargs):
+        return False
 
 
 def workspace_root() -> Path:

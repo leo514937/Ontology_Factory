@@ -10,6 +10,7 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - Python < 3.11 fallback
     import tomli as tomllib
 from pydantic import BaseModel, ConfigDict, Field
+from tools.qagent_unified_config import resolve_unified_llm_config
 
 
 class OpenAIConfig(BaseModel):
@@ -65,10 +66,12 @@ def load_app_config(config_path: str | Path | None = None) -> AppConfig:
     """Load application config from TOML."""
     path = Path(config_path) if config_path else default_config_path()
     if not path.exists():
-        return AppConfig()
+        config = AppConfig()
+        return _apply_unified_llm_config(config)
     with path.open("rb") as fh:
         payload = tomllib.load(fh)
-    return AppConfig.model_validate(payload)
+    config = AppConfig.model_validate(payload)
+    return _apply_unified_llm_config(config)
 
 
 def is_configured_api_key(api_key: str | None) -> bool:
@@ -109,5 +112,17 @@ def build_chat_openai_kwargs(
         merged_kwargs["max_retries"] = openai_config.max_retries
     merged_kwargs.update(llm_kwargs)
     return merged_kwargs
+
+
+def _apply_unified_llm_config(config: AppConfig) -> AppConfig:
+    unified = resolve_unified_llm_config()
+    if not unified.is_configured():
+        return config
+    config.openai.api_key = unified.api_key
+    config.openai.model = unified.model
+    config.openai.base_url = unified.base_url
+    if config.openai.timeout is None:
+        config.openai.timeout = unified.timeout_s
+    return config
 
 

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 import yaml
+from tools.qagent_unified_config import resolve_unified_llm_config
 
 
 @dataclass(frozen=True)
@@ -104,6 +105,19 @@ def load_config(path: str) -> AppConfig:
             )
         )
 
+    unified = resolve_unified_llm_config()
+    if unified.is_configured():
+        candidates = [
+            ModelCandidate(
+                name="unified_llm",
+                provider="openai_compat",
+                base_url=unified.base_url,
+                api_key_env=unified.api_key,
+                model=unified.model,
+                timeout_s=int(unified.timeout_s),
+            )
+        ]
+
     chunk_raw = _get(raw, "models.chunking", {}) or {}
     chunking = ChunkingConfig(
         enabled=bool(chunk_raw.get("enabled", True)),
@@ -111,7 +125,7 @@ def load_config(path: str) -> AppConfig:
     )
 
     models = ModelsConfig(
-        enabled=bool(_get(raw, "models.enabled", False)),
+        enabled=bool(_get(raw, "models.enabled", False)) or unified.is_configured(),
         candidates=candidates,
         arbitration=arbitration,
         chunking=chunking,

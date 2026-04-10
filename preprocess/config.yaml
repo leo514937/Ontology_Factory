@@ -1,7 +1,7 @@
-pipeline:
-  # conservative: 宁可漏修（改动越小越好），且尽量不碰数字/单位
+﻿pipeline:
+  # conservative: 瀹佸彲婕忎慨锛堟敼鍔ㄨ秺灏忚秺濂斤級锛屼笖灏介噺涓嶇鏁板瓧/鍗曚綅
   conservative: true
-  # 仅输出干净文本；此阶段不产出结构化候选
+  # 浠呰緭鍑哄共鍑€鏂囨湰锛涙闃舵涓嶄骇鍑虹粨鏋勫寲鍊欓€?
   output: clean_text
 
 io:
@@ -16,33 +16,34 @@ io:
   encoding_fallbacks: ["utf-8", "utf-8-sig", "gb18030"]
 
 models:
-  enabled: true
-  # 三模型并行（可同一家，也可不同家）。你自行填 token / base_url / model。
-  # 这里按“OpenAI 兼容 Chat Completions”协议组织（多数厂商都兼容）。
+  enabled: false
+  # 涓夋ā鍨嬪苟琛岋紙鍙悓涓€瀹讹紝涔熷彲涓嶅悓瀹讹級銆備綘鑷濉?token / base_url / model銆?
+  # 杩欓噷鎸夆€淥penAI 鍏煎 Chat Completions鈥濆崗璁粍缁囷紙澶氭暟鍘傚晢閮藉吋瀹癸級銆?
   candidates:
     - name: "model_a"
       provider: "openai_compat"
       base_url: "https://coding.dashscope.aliyuncs.com/v1"
-      api_key_env: "sk-sp-8b78e83f38914b7aa664cdf702d33dcb"
+      api_key_env: "MODEL_A_API_KEY"
       model: "glm-5"
       timeout_s: 200
     - name: "model_b"
       provider: "openai_compat"
       base_url: "https://coding.dashscope.aliyuncs.com/v1"
-      api_key_env: "sk-sp-8b78e83f38914b7aa664cdf702d33dcb"
+      api_key_env: "MODEL_B_API_KEY"
       model: "qwen3-coder-plus"
       timeout_s: 200
     - name: "model_c"
       provider: "openai_compat"
       base_url: "https://coding.dashscope.aliyuncs.com/v1"
-      api_key_env: "sk-sp-8b78e83f38914b7aa664cdf702d33dcb"
+      api_key_env: "MODEL_C_API_KEY"
       model: "qwen3-coder-next"
       timeout_s: 200
 
-  # 模型只允许做“低风险清洗”。任何涉及数字/单位/参数的改写都应该被拒绝。
-  # 如果你后面想更严格，可把 max_relative_change 调小。
+  # 妯″瀷鍙厑璁稿仛鈥滀綆椋庨櫓娓呮礂鈥濄€備换浣曟秹鍙婃暟瀛?鍗曚綅/鍙傛暟鐨勬敼鍐欓兘搴旇琚嫆缁濄€?
+  # 濡傛灉浣犲悗闈㈡兂鏇翠弗鏍硷紝鍙妸 max_relative_change 璋冨皬銆?
   arbitration:
     max_relative_change: 0.08
     require_numbers_preserved: true
     require_two_models_agree: false
+
 

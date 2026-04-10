@@ -1,0 +1,20 @@
+{
+  "generated_at": "2026-04-10T05:23:47.236358+00:00",
+  "input": {
+    "path": "preprocess\\sample.txt",
+    "suffix": ".txt"
+  },
+  "output": {
+    "clean_text_path": "outputs\\sample.clean.txt",
+    "report_path": "outputs\\sample.report.json"
+  },
+  "rules": {
+    "removed_lines": 1,
+    "merged_wrap_lines": 0
+  },
+  "models": {
+    "enabled": false,
+    "candidates": []
+  },
+  "arbitration": null
+}

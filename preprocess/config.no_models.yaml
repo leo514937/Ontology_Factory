@@ -1,0 +1,17 @@
+﻿pipeline:
+  conservative: true
+  output: clean_text
+
+io:
+  input_globs:
+    - "*.txt"
+    - "*.md"
+    - "*.pdf"
+    - "*.docx"
+    - "*.html"
+    - "*.htm"
+  output_dir: "outputs"
+  encoding_fallbacks: ["utf-8", "utf-8-sig", "gb18030"]
+
+models:
+  enabled: false

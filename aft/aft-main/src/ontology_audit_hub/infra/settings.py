@@ -5,6 +5,8 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from tools.qagent_unified_config import resolve_unified_llm_config
+
 
 def _env_bool(name: str, default: bool) -> bool:
     raw = os.getenv(name)
@@ -140,19 +142,27 @@ class AuditHubSettings:
         # Auto-load .env file before reading env vars (no external deps needed)
         _load_dotenv_file()
 
+        unified = resolve_unified_llm_config()
+
         neo4j_uri = _expand_env_placeholders(os.getenv("ONTOLOGY_AUDIT_NEO4J_URI", "")) or None
         neo4j_username = _expand_env_placeholders(os.getenv("ONTOLOGY_AUDIT_NEO4J_USERNAME", "")) or None
         neo4j_password = _expand_env_placeholders(os.getenv("ONTOLOGY_AUDIT_NEO4J_PASSWORD", "")) or None
         llm_model = _expand_env_placeholders(os.getenv("ONTOLOGY_AUDIT_LLM_MODEL", "")) or None
+        openai_api_key = _expand_env_placeholders(os.getenv("OPENAI_API_KEY", "")) or None
+        openai_base_url = _expand_env_placeholders(os.getenv("OPENAI_BASE_URL", "")) or None
+        if unified.is_configured():
+            openai_api_key = unified.api_key
+            openai_base_url = unified.base_url
+            llm_model = unified.model
         qdrant_url = _expand_env_placeholders(os.getenv("ONTOLOGY_AUDIT_QDRANT_URL", "")) or None
         rag_embedding_api_key = (
             _expand_env_placeholders(os.getenv("ONTOLOGY_AUDIT_RAG_EMBEDDING_API_KEY", ""))
-            or _expand_env_placeholders(os.getenv("OPENAI_API_KEY", ""))
+            or (openai_api_key or "")
             or None
         )
         rag_embedding_base_url = (
             _expand_env_placeholders(os.getenv("ONTOLOGY_AUDIT_RAG_EMBEDDING_BASE_URL", ""))
-            or _expand_env_placeholders(os.getenv("OPENAI_BASE_URL", ""))
+            or (openai_base_url or "")
             or None
         )
         default_qdrant_mode = "server" if qdrant_url else "embedded"

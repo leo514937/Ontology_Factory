@@ -2,6 +2,11 @@
 
 这份文档整理了当前项目里已经接好的 CLI 能力。
 
+给 QAgent 使用的固定提示词目录：
+
+- `tools/qagent_cli_prompts/README.md`
+- 每个 CLI 各有一份独立提示词，便于按任务读取
+
 当前设计原则是：
 
 - `wiki_agent` 只有一个工具：`run_command`

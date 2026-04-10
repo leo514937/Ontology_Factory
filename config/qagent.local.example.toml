@@ -1,0 +1,11 @@
+[llm]
+enabled = true
+base_url = "https://openrouter.ai/api/v1"
+api_key = "YOUR_OPENROUTER_API_KEY"
+model = "openai/gpt-4o-mini"
+timeout_s = 60
+
+[defaults]
+storage_database = "storage/data/classification_store.sqlite3"
+wiki_root = "wiki"
+xiaogugit_root = "xiaogugit/storage"

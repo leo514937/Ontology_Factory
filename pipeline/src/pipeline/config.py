@@ -7,6 +7,7 @@ import yaml
 from pydantic import BaseModel, Field
 
 from pipeline.bootstrap import workspace_root
+from tools.qagent_unified_config import overlay_pipeline_llm_config
 
 
 class PreprocessSettings(BaseModel):
@@ -47,7 +48,9 @@ class PipelineConfig(BaseModel):
 
 def load_pipeline_config(path: str | None = None) -> PipelineConfig:
     if path is None:
-        return PipelineConfig()
+        config = PipelineConfig()
+        config.llm = overlay_pipeline_llm_config(config.llm)
+        return config
     config_path = Path(path).resolve()
     payload = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
     config = PipelineConfig.model_validate(payload)
@@ -57,6 +60,7 @@ def load_pipeline_config(path: str | None = None) -> PipelineConfig:
     config.dls.artifact_root = _resolve_optional_path(config.dls.artifact_root, base_dir)
     config.output.root_dir = _resolve_path(config.output.root_dir, base_dir)
     config.storage.database_path = _resolve_path(config.storage.database_path, base_dir)
+    config.llm = overlay_pipeline_llm_config(config.llm)
     return config
 
 

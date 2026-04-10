@@ -11,6 +11,11 @@ from pathlib import Path
 from typing import Sequence
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from tools.qagent_unified_config import apply_unified_llm_env
+
 COMMON_PYTHONPATHS = (
     REPO_ROOT,
     REPO_ROOT / "WIKI_MG" / "src",
@@ -79,6 +84,20 @@ CLI_SPECS: dict[str, CliSpec] = {
         help_args=("classify", "--help"),
         description="Ontology negotiator CLI.",
     ),
+    "pipeline": CliSpec(
+        name="pipeline",
+        module="pipeline.cli",
+        min_python=(3, 10),
+        help_args=("--help",),
+        description="Unified ingest and wiki pipeline CLI.",
+    ),
+    "mm-denoise": CliSpec(
+        name="mm-denoise",
+        module="mm_denoise.cli",
+        min_python=(3, 10),
+        help_args=("--help",),
+        description="Document preprocessing and denoise CLI.",
+    ),
     "xiaogugit": CliSpec(
         name="xiaogugit",
         module="xiaogugit",
@@ -116,7 +135,7 @@ def supports_current_python(spec: CliSpec) -> bool:
 
 
 def build_env(existing: dict[str, str] | None = None) -> dict[str, str]:
-    env = dict(existing or os.environ)
+    env = apply_unified_llm_env(existing)
     pythonpath_entries = [str(path) for path in COMMON_PYTHONPATHS]
     existing_pythonpath = env.get("PYTHONPATH", "").strip()
     if existing_pythonpath:
