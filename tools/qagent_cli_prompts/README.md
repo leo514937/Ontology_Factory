@@ -2,20 +2,24 @@
 
 固定位置：`tools/qagent_cli_prompts/`
 
-用途：
+## 用途
 
-- 给 QAgent 提供一组可直接读取的 CLI 提示词
-- 每个 CLI 一份独立提示词，便于按需打开
-- 约定 QAgent 先看本索引，再按任务打开对应文件
+- 给 agent 提供“看完就能直接调用 CLI”的任务提示词。
+- 每个 CLI 单独一份说明文件，减少 agent 自己猜流程。
+- 建议顺序是：先读本索引，再读对应 CLI 提示词，再执行命令。
 
-使用建议：
+## 通用执行规范
 
-- 先在仓库根目录 `D:\code\Ontology_Factory` 下工作
-- 首次使用某个 CLI 前，先执行该 CLI 的 `--help`
-- 如果需要统一环境基线，优先参考 `tools/cli_baseline.py`
-- 如果命令失败，先总结 `returncode/stdout/stderr`，再决定是否改代码
+- 默认在仓库根目录 `D:\code\onto\Ontology_Factory` 下工作。
+- 先读 [`README_CLI.md`](D:/code/onto/Ontology_Factory/README_CLI.md) 确认可用 CLI。
+- 能用 `python tools/cli_baseline.py run <cli> -- ...` 的场景，优先用它，保证解释器和 `PYTHONPATH` 一致。
+- 每个 CLI 第一次调用前，先执行对应 `--help`。
+- 命令失败时，优先记录 `returncode`、`stdout`、`stderr`，不要直接改流程。
+- 需要程序继续消费时，优先使用 JSON 输出、`--stdout` 或显式 `--output`。
+- 不要在没有真实复现的情况下，声称某个 CLI 缺依赖或无法运行。
+- 如果是参数缺失、项目未初始化或版本基线不匹配，应继续补齐步骤，不要把任务退回给用户手动执行。
 
-可用提示词：
+## 提示词清单
 
 - `wikimg.md`
 - `ner.md`
@@ -26,21 +30,31 @@
 - `pipeline.md`
 - `mm-denoise.md`
 - `xiaogugit.md`
+- `engineering-doc-to-xiaogugit.md`
 - `ontology-audit-hub.md`
 - `aft-review.md`
 - `aft-qa.md`
 
-任务到 CLI 的推荐映射：
+## 任务与提示词映射
 
-- Wiki 页面管理、页面搜索、页面创建：`wikimg.md`
+- Wiki 页面浏览、检索、建页：`wikimg.md`
 - 实体抽取：`ner.md`
 - 关系抽取：`entity-relation.md`
-- 存储层检索：`ontology-store.md`
+- 库内原始存储检索：`ontology-store.md`
 - 规范实体检索：`ontology-core.md`
 - 本体协商与分类：`ontology-negotiator.md`
-- 整体流水线运行：`pipeline.md`
-- 文本预处理与清洗：`mm-denoise.md`
-- 结构化版本存储读写：`xiaogugit.md`
-- 审计主线与恢复：`ontology-audit-hub.md`
+- 单文档/目录主流程运行：`pipeline.md`
+- 文档预处理与清洗：`mm-denoise.md`
+- 结构化版本读写与回滚：`xiaogugit.md`
+- 工程文档清洗、分层、结构化并写入 xiaogugit：`engineering-doc-to-xiaogugit.md`
+- 审计主线、恢复、体检：`ontology-audit-hub.md`
 - GitHub 审查：`aft-review.md`
-- QA 与知识库维护：`aft-qa.md`
+- QA 与知识上传维护：`aft-qa.md`
+
+## 推荐选择顺序
+
+- 先做预处理：`mm-denoise.md`
+- 再做抽取：`ner.md`、`entity-relation.md`
+- 再做检索验证：`ontology-store.md`、`ontology-core.md`
+- 再决定是否跑主流程：`pipeline.md`
+- 需要版本化入库时：`xiaogugit.md`

@@ -51,9 +51,16 @@ def build_react_system_prompt() -> str:
         '"title":"...","page_type":"entity|concept|project|system|topic","summary":"...",'
         '"content_markdown":"...","sources":[{"source_sentence":"...","evidence_text":"..."}],'
         '"related_pages":["..."],"reason":"..."}}。'
-        "如果信息已足够，请直接输出 final_commit。"
+        "如果信息已经足够，请直接输出 final_commit。"
         "你只有一个工具：run_command。"
         "所有探索、检索、抽取、Wiki 查询都必须通过命令行完成。"
+        "首次使用任何 CLI 前，先读取 README_CLI.md。"
+        "然后按任务打开 tools/qagent_cli_prompts/ 下的对应说明文件，再执行命令。"
+        "文档预处理先看 tools/qagent_cli_prompts/mm-denoise.md，整体流水线先看 tools/qagent_cli_prompts/pipeline.md，"
+        "实体抽取先看 tools/qagent_cli_prompts/ner.md，关系抽取先看 tools/qagent_cli_prompts/entity-relation.md，"
+        "存储检索先看 tools/qagent_cli_prompts/ontology-store.md，写入版本库先看 tools/qagent_cli_prompts/xiaogugit.md。"
+        "如果任务是工程文档整理入库，按“预处理 -> 分层整理 -> 结构化产出 -> 写入 xiaogugit -> 验证”的顺序执行，"
+        "优先使用仓库现有 CLI，不要自行发明流程。"
         "不要输出 Markdown 代码块，不要输出多余说明。"
     )
 
@@ -140,6 +147,12 @@ TOOL_SPECS: list[dict[str, Any]] = [
             "支持只读检索命令，以及 Wiki、NER、relation、storage、ontology、dls、"
             "pipeline、mm_denoise、xiaogugit、AFT 等 CLI 能力。"
             "所有 CLI 都支持先用 `--help` 读取帮助。"
+            "首次使用某个 CLI 前，先看 `README_CLI.md`，再按任务打开 "
+            "`tools/qagent_cli_prompts/` 下的对应说明文件，例如 "
+            "`mm-denoise.md`、`pipeline.md`、`ner.md`、`entity-relation.md`、"
+            "`ontology-store.md`、`ontology-core.md`、`ontology-negotiator.md`、`xiaogugit.md`。"
+            "如果是工程文档处理任务，先读 `engineering-doc-to-xiaogugit.md`，"
+            "再按文档中的阶段顺序执行。"
             "可用示例：`pwd`、`ls`、`rg -n 关键词 .`、`cat 文件名`、"
             "`wikimg --help`、`wikimg --root 工作区 search 关键词 --content`、"
             "`python -m ner.cli extract --help`、"
