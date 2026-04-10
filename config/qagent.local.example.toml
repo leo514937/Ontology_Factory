@@ -1,7 +1,7 @@
 [llm]
 enabled = true
 base_url = "https://openrouter.ai/api/v1"
-api_key = "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"
+api_key = "api-key"
 model = "openai/gpt-4o-mini"
 timeout_s = 60
 
